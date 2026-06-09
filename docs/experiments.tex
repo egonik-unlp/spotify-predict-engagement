@@ -1,0 +1,117 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.6cm]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{siunitx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{seqsplit}
+\graphicspath{{figures/}}
+\newcommand{\runid}[1]{\texttt{\small\seqsplit{#1}}}
+\newcommand{\dsid}[1]{\texttt{\small #1}}
+\newcommand{\best}[1]{\textbf{#1}}
+\newcommand{\medape}{medAPE}
+\newcommand{\rsq}{$R^2$}
+
+\title{Spotify Engagement from Metadata: Experiment Synthesis}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document is the living synthesis of the engagement-from-metadata
+prediction campaigns; the markdown reports in \texttt{experiments/} are the
+primary record. The target is per-track \emph{engagement}
+($\text{play\_count}\times\text{completion\_ratio}$, $\log1p$-transformed),
+predicted from a track's \emph{intrinsic metadata} alone --- genre, artist,
+artist/track popularity, follower count, release year, release type --- over
+the user's \num{12256}-track listening corpus. The behavioral co-listening
+embedding and all playback/curation fields are deliberately excluded from the
+feature set. No campaigns have run yet; this synthesis is seeded empty and
+each campaign appends a section as it lands.
+\end{abstract}
+
+\section{Introduction}
+This document is the living synthesis of the experiment campaigns; the
+markdown reports in \texttt{experiments/} are the primary record. Each section
+transcribes (never recomputes) the quantitative results of a campaign,
+preserves its run and dataset identifiers verbatim for traceability, and adds
+the rationale and interpretation that the terse reports omit.
+
+\paragraph{Task and target.} The lab predicts a per-track \emph{engagement}
+score, defined as $\text{play\_count}\times\text{completion\_ratio}$, from a
+track's intrinsic metadata over the user's listening corpus. Because
+engagement is heavy-tailed and
+non-negative, models are trained against the $\log1p$-transformed target and
+predictions are mapped back with $\text{expm1}$. This compresses the long tail
+into a regime where squared-error losses behave, but it carries a hazard: a
+model that is unbounded in log-space can produce a large positive log
+prediction that $\text{expm1}$ amplifies into an enormous engagement value (the
+``$\text{expm1}$ blow-up''). Bounded-by-construction families are immune;
+unbounded ones are not (see Section~\ref{sec:background}).
+
+\paragraph{Metrics.} The headline metric is the mean absolute error (MAE) in
+raw engagement units, reported alongside RMSE and the coefficient of
+determination \rsq{}. MAE is robust to the tail and is the quantity the
+leaderboard sorts on; RMSE exposes tail misses; \rsq{} measures variance
+explained relative to the median baseline. Absolute-percentage error
+(\medape{}) is used where a scale-free view helps. Throughout, MAE is in raw
+engagement units with thousands separators where large.
+
+\paragraph{Features.} The feature space is a track's \emph{intrinsic metadata}
+alone: genre, artist, artist/track popularity, follower count, release year,
+credited-artist count and release type. The 200-dimension co-listening
+word2vec embedding is a \emph{behavioral} signal, not metadata, and is left
+out of the feature set entirely --- the payload-based predictors are the
+canonical models here. Critically, the recipe is \emph{leakage-free}: the
+playback fields that mechanically constitute or proxy the target ---
+\texttt{play\_count}, \texttt{completion\_ratio}, \texttt{skip\_rate},
+\texttt{shuffle\_rate}, \texttt{distinct\_sessions} --- and the behaviorally
+entangled curation fields are all excluded by default.
+
+\section{Background: model families and the log-target}
+\label{sec:background}
+This section gives the minimum theory for a reader who knows regression but
+not this repo. It is keyed to \texttt{PROJECT-FACTS.md} and grows only when a
+new predictor family enters the reports. No campaigns have run yet; the
+families below are the expected opening contenders.
+
+\begin{description}
+  \item[Gradient-boosted trees (xgboost).] An additive ensemble of shallow
+  regression trees, each fit to the residual gradient of the previous stage.
+  Predictions are leaf averages, so the output is bounded by the range of
+  training targets: the model \emph{cannot} blow up through the $\text{expm1}$
+  inverse. Trees capture non-linear interactions among PCA components without
+  manual feature crosses, which suits a dense embedded feature space; the cost
+  is a non-deterministic fit (subsampling and column sampling carry an internal
+  RNG seed), so two runs at different seeds differ slightly.
+  \item[Ridge regression.] Ordinary least squares with an $\ell_2$ penalty on
+  the coefficients (here with automatic $\alpha$ selection). It is a linear
+  model, so it is fully deterministic given the data --- the closed-form
+  solution has no RNG --- and run-to-run variance is exactly zero. Being
+  linear and unbounded in log-space, it is in principle capable of an
+  $\text{expm1}$ blow-up, but with the $\ell_2$ penalty and this corpus it
+  reverts toward a sane intercept and stays bounded in practice. It serves as a
+  strong, cheap, reproducible baseline and as a control on the training
+  harness itself.
+\end{description}
+
+\paragraph{Why metadata-only and the log-target.} Restricting features to
+intrinsic metadata makes the model a cold-start scorer: it predicts
+engagement for a track with zero plays, isolating how much taste fit is
+explainable from catalog attributes versus behavioral co-listening. The
+$\log1p$ target tames the engagement tail at train time, and $\text{expm1}$
+restores raw units at predict time --- the transform pair is the reason the
+blow-up hazard exists and the reason bounded families are preferred until an
+unbounded one is proven safe.
+
+\section{Campaigns}
+No campaigns have run yet. Each campaign appends a section here as it lands,
+transcribing its results and citing its source report in \texttt{experiments/}.
+
+\section{Source reports}
+None yet. Reports accumulate in \texttt{experiments/} as campaigns run.
+
+\end{document}

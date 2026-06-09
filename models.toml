@@ -1,0 +1,60 @@
+[[definitions]]
+name = "baseline-median"
+predictor = "baseline-median"
+dataset_tags = ["ds-20260608-161709-p1-s42"]
+notes = "Phase-5 floor: group-median predictor; every model must beat this."
+created_at = "2026-06-08T16:18:57.332552881+00:00"
+updated_at = "2026-06-08T16:19:31.349180203+00:00"
+
+[definitions.hyperparams]
+
+[[definitions]]
+name = "ridge-metadata"
+predictor = "ridge"
+dataset_tags = [
+    "ds-20260608-161709-p1-s42",
+    "ds-20260608-172500-p128-s42",
+]
+notes = "Phase-5 linear comparator: how much of engagement is LINEARLY explainable from intrinsic metadata."
+created_at = "2026-06-08T16:18:57.352115838+00:00"
+updated_at = "2026-06-08T17:25:17.874658573+00:00"
+
+[definitions.hyperparams]
+alpha = 1.0
+auto_alpha = true
+huber_epsilon = 1.35
+loss = "squared"
+weight_gamma = 0.0
+
+[[definitions]]
+name = "xgboost-metadata"
+predictor = "xgboost"
+dataset_tags = [
+    "ds-20260608-161709-p1-s42",
+    "ds-20260608-172456-p16-s42",
+    "ds-20260608-172458-p64-s42",
+    "ds-20260608-172500-p128-s42",
+    "ds-20260608-173442-p128-s42",
+    "ds-20260608-175339-p1-s42",
+    "ds-20260608-175340-p1-s42",
+    "ds-20260608-202747-p64-s42",
+    "ds-20260608-203252-p64-s42",
+    "ds-20260608-204402-p64-s42",
+    "ds-20260608-205802-p64-s42",
+]
+notes = "Phase-5 low-drama default: bounded predictions, native one-hot/indicator/missing handling; expected champion candidate."
+created_at = "2026-06-08T16:18:57.374224281+00:00"
+updated_at = "2026-06-08T20:58:02.543565214+00:00"
+
+[definitions.hyperparams]
+colsample_bytree = 0.8
+early_stopping_rounds = 0
+learning_rate = 0.05
+max_depth = 6
+min_child_weight = 1.0
+n_estimators = 500
+reg_lambda = 1.0
+seed = 42
+subsample = 0.8
+val_fraction = 0.15
+weight_gamma = 0.0

@@ -1,0 +1,283 @@
+{
+ "din": 540,
+ "hidden": 256,
+ "latent": 64,
+ "numerics": [
+  "artist_popularity",
+  "track_popularity",
+  "artist_followers",
+  "release_year",
+  "artist_count",
+  "sp_duration_ms",
+  "sp_n_markets",
+  "sp_track_number",
+  "sp_explicit",
+  "sp_genre_count"
+ ],
+ "log_numerics": [
+  "artist_followers",
+  "sp_duration_ms"
+ ],
+ "num_stats": {
+  "artist_popularity": {
+   "mean": 57.36650286650287,
+   "std": 17.833672564086363,
+   "log": false
+  },
+  "track_popularity": {
+   "mean": 30.0991094043631,
+   "std": 24.028407997732756,
+   "log": false
+  },
+  "artist_followers": {
+   "mean": 13.035641899746695,
+   "std": 2.607901455290668,
+   "log": true
+  },
+  "release_year": {
+   "mean": 2005.8304600049023,
+   "std": 71.30138044855521,
+   "log": false
+  },
+  "artist_count": {
+   "mean": 1.2127624805948198,
+   "std": 0.6225838337098232,
+   "log": false
+  },
+  "sp_duration_ms": {
+   "mean": 12.327592081059963,
+   "std": 0.5982820959063234,
+   "log": true
+  },
+  "sp_n_markets": {
+   "mean": 109.35982375979113,
+   "std": 89.0231093562045,
+   "log": false
+  },
+  "sp_track_number": {
+   "mean": 5.555646214099217,
+   "std": 5.334059495836425,
+   "log": false
+  },
+  "sp_explicit": {
+   "mean": 0.0651925587467363,
+   "std": 0.2468653256955898,
+   "log": false
+  },
+  "sp_genre_count": {
+   "mean": 2.216791775456919,
+   "std": 1.6780476797127295,
+   "log": false
+  }
+ },
+ "acoustics": [
+  "af_danceability",
+  "af_energy",
+  "af_valence",
+  "af_tempo",
+  "af_acousticness",
+  "af_instrumentalness",
+  "af_loudness",
+  "af_speechiness",
+  "af_liveness",
+  "af_key",
+  "af_mode"
+ ],
+ "ac_stats": {
+  "af_danceability": {
+   "mean": 0.5756035651297557,
+   "std": 0.1791052067868185
+  },
+  "af_energy": {
+   "mean": 0.6248353445074326,
+   "std": 0.23252909118829304
+  },
+  "af_valence": {
+   "mean": 0.47615910808767953,
+   "std": 0.2630967248890177
+  },
+  "af_tempo": {
+   "mean": 120.23724363819602,
+   "std": 28.629452975657994
+  },
+  "af_acousticness": {
+   "mean": 0.263867363585286,
+   "std": 0.30829358486823244
+  },
+  "af_instrumentalness": {
+   "mean": 0.2551498127639204,
+   "std": 0.35451354523658407
+  },
+  "af_loudness": {
+   "mean": -9.044890652557319,
+   "std": 4.743793269782173
+  },
+  "af_speechiness": {
+   "mean": 0.06827030738221214,
+   "std": 0.07588598653116238
+  },
+  "af_liveness": {
+   "mean": 0.20697093726379442,
+   "std": 0.19457380445436934
+  },
+  "af_key": {
+   "mean": 5.350088183421517,
+   "std": 3.5983833772947795
+  },
+  "af_mode": {
+   "mean": 0.6015369110607206,
+   "std": 0.4895817150305425
+  }
+ },
+ "genre_vocab": [
+  "argentine rock",
+  "alternative rock",
+  "latin indie",
+  "latin alternative",
+  "latin rock",
+  "argentine indie",
+  "downtempo",
+  "alternative dance",
+  "rock en espa\u00f1ol",
+  "rock",
+  "madchester",
+  "alternative metal",
+  "classic rock",
+  "reggaeton",
+  "album rock",
+  "unknown",
+  "trip hop",
+  "art rock",
+  "indie rock",
+  "britpop",
+  "new wave",
+  "big beat",
+  "metal",
+  "dance pop",
+  "industrial metal",
+  "industrial",
+  "electronica",
+  "argentine alternative rock",
+  "industrial rock",
+  "ambient",
+  "electro",
+  "argentine trap",
+  "progressive rock",
+  "latin",
+  "synthpop",
+  "art pop",
+  "cumbia",
+  "neue deutsche welle",
+  "indie",
+  "urbano latino",
+  "electronic",
+  "alternative hip hop",
+  "trap latino",
+  "latin hip hop",
+  "dream pop",
+  "melodic house",
+  "idm",
+  "jangle pop",
+  "shoegaze",
+  "french house",
+  "post-punk",
+  "krautrock",
+  "cuarteto",
+  "melodic techno",
+  "latin folk",
+  "german pop",
+  "psychedelic rock",
+  "mexican indie",
+  "cumbia pop",
+  "garage rock",
+  "nu jazz",
+  "tango",
+  "post-rock",
+  "french indie pop",
+  "hard rock",
+  "progressive house",
+  "latin pop",
+  "soundtrack",
+  "modern rock",
+  "blues rock",
+  "darkwave",
+  "brooklyn indie",
+  "hip hop",
+  "dusseldorf electronic",
+  "colombian pop",
+  "argentine hip hop",
+  "neo-psychedelic",
+  "german alternative rock",
+  "reggae",
+  "edm",
+  "rkt",
+  "turreo",
+  "organic house",
+  "electrocumbia",
+  "blues",
+  "score",
+  "electronica argentina",
+  "trap",
+  "plunderphonics",
+  "ska",
+  "gothic rock",
+  "rock and roll",
+  "candombe",
+  "new age",
+  "baroque pop",
+  "jazz rap",
+  "techno",
+  "rap",
+  "synthwave",
+  "anime",
+  "electropop",
+  "celtic",
+  "irish rock",
+  "bedroom pop",
+  "classic soul",
+  "acid jazz",
+  "bebop",
+  "space rock",
+  "breakbeat",
+  "pop",
+  "chillwave",
+  "horror synth",
+  "electro swing",
+  "neotango",
+  "electroclash",
+  "new rave",
+  "lounge",
+  "east coast hip hop",
+  "acid house",
+  "alternative r&b"
+ ],
+ "album_types": [
+  "album",
+  "compilation",
+  "single",
+  "unknown"
+ ],
+ "spans": [
+  [
+   "text",
+   0,
+   384
+  ],
+  [
+   "numeric",
+   384,
+   394
+  ],
+  [
+   "acoustic",
+   394,
+   416
+  ],
+  [
+   "categorical",
+   416,
+   540
+  ]
+ ],
+ "text_model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+}
