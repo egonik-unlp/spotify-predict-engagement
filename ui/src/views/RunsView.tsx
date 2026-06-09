@@ -11,7 +11,9 @@ import Sparkline from '../components/Sparkline'
 import { useAsync } from '../hooks/useAsync'
 import { useRunEvents } from '../hooks/useRunEvents'
 import { useDomain } from '../lib/DomainContext'
-import { fmtDateTime, fmtDuration, fmtMoney, fmtMoneyCell, fmtPct, fmtR2, fmtStamp, shortRunId, tinyRunId } from '../lib/format'
+import { fmtDateTime, fmtDuration, fmtStamp, shortRunId, tinyRunId } from '../lib/format'
+import { isTargetUnitMetric, metricCellFormatter, metricFormatter, metricKey, metricValue, type MetricKey } from '../lib/metrics'
+import type { Domain } from '../lib/domain'
 import './runs.css'
 
 /* Browsers cap concurrent HTTP/1.1 connections per origin (~6); each live
@@ -21,34 +23,27 @@ import './runs.css'
 const MAX_LIVE_CELLS = 4
 const POLL_MS = 5000
 
-type SortKey =
-  | 'started_at'
-  | 'predictor'
-  | 'dataset_id'
-  | 'status'
-  | 'mae'
-  | 'rmse'
-  | 'r2'
-  | 'mape'
-  | 'medape'
+/** Sort keys: the fixed meta columns, plus any metric key (mae/auc/…). */
+type MetaSortKey = 'started_at' | 'predictor' | 'dataset_id' | 'status'
+type SortKey = MetaSortKey | MetricKey
 
 interface Sort {
   key: SortKey
   dir: 1 | -1
 }
 
-const metric = (r: RunMeta, k: 'mae' | 'rmse' | 'r2' | 'mape' | 'medape') =>
-  r.metrics ? r.metrics[k] : null
+const META_KEYS: MetaSortKey[] = ['started_at', 'predictor', 'dataset_id', 'status']
+const isMetaKey = (k: SortKey): k is MetaSortKey => (META_KEYS as string[]).includes(k)
 
 function compare(a: RunMeta, b: RunMeta, { key, dir }: Sort): number {
   let av: string | number | null
   let bv: string | number | null
-  if (key === 'started_at' || key === 'predictor' || key === 'dataset_id' || key === 'status') {
+  if (isMetaKey(key)) {
     av = a[key]
     bv = b[key]
   } else {
-    av = metric(a, key)
-    bv = metric(b, key)
+    av = a.metrics?.[key] ?? null
+    bv = b.metrics?.[key] ?? null
   }
   if (av === null && bv === null) return 0
   if (av === null) return 1 // metric-less runs sink regardless of direction
@@ -59,22 +54,32 @@ function compare(a: RunMeta, b: RunMeta, { key, dir }: Sort): number {
 }
 
 /* Representative column widths for the loading state (select, run, predictor,
-   dataset, status, 5 metrics, time, started, actions). */
-const SKELETON_COLS = [
-  '1.5ch',
-  '10ch',
-  '8ch',
-  '14ch',
-  '8ch',
-  '6ch',
-  '6ch',
-  '5ch',
-  '5ch',
-  '6ch',
-  '5ch',
-  '13ch',
-  '3ch',
-]
+   dataset, status, then one per metric column, time, started, actions). */
+function skeletonCols(nMetrics: number): string[] {
+  return [
+    '1.5ch',
+    '10ch',
+    '8ch',
+    '14ch',
+    '8ch',
+    ...Array.from({ length: nMetrics }, () => '6ch'),
+    '6ch',
+    '13ch',
+    '3ch',
+  ]
+}
+
+/** The default per-direction for a sort column: time sorts newest-first,
+ *  metric columns sort to put the best on top (ascending for error metrics,
+ *  descending for scores), everything else ascending. */
+function defaultDir(key: SortKey): 1 | -1 {
+  if (key === 'started_at') return -1
+  if (!isMetaKey(key)) {
+    const err = ['mae', 'rmse', 'mape', 'medape', 'logloss', 'brier']
+    return err.includes(key) ? 1 : -1
+  }
+  return 1
+}
 
 export default function RunsView() {
   const domain = useDomain()
@@ -82,6 +87,9 @@ export default function RunsView() {
     document.title = `Runs · ${domain.project.title}`
   }, [domain.project.title])
   const navigate = useNavigate()
+  // Metric columns and their keys are domain-driven (regression: MAE/RMSE/R²;
+  // classification: AUC/logloss/accuracy), so the table follows the task.
+  const metricCols = domain.metrics.columns
   const { data: runs, error, loading, reload } = useAsync(() => api.listRuns(), [])
   const [sort, setSort] = useState<Sort>({ key: 'started_at', dir: -1 })
   const [selected, setSelected] = useState<string[]>([])
@@ -106,7 +114,7 @@ export default function RunsView() {
   }, [anyRunning, reload])
 
   const toggleSort = (key: SortKey) =>
-    setSort((s) => ({ key, dir: s.key === key ? ((-s.dir) as 1 | -1) : key === 'started_at' ? -1 : 1 }))
+    setSort((s) => ({ key, dir: s.key === key ? ((-s.dir) as 1 | -1) : defaultDir(key) }))
 
   const toggleSelect = useCallback((runId: string) => {
     setSelected((sel) =>
@@ -191,13 +199,18 @@ export default function RunsView() {
             </th>
             <th>{sortBtn('dataset_id', 'Dataset')}</th>
             <th>{sortBtn('status', 'Status')}</th>
-            <th className="num-col col-group-start" aria-sort={sort.key === 'mae' ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}>
-              {sortBtn('mae', 'MAE')}
-            </th>
-            <th className="num-col">{sortBtn('rmse', 'RMSE')}</th>
-            <th className="num-col">{sortBtn('r2', 'R²')}</th>
-            <th className="num-col">{sortBtn('mape', 'MAPE')}</th>
-            <th className="num-col">{sortBtn('medape', 'medAPE')}</th>
+            {metricCols.map((col, i) => {
+              const key = metricKey(col)
+              return (
+                <th
+                  key={col}
+                  className={`num-col${i === 0 ? ' col-group-start' : ''}`}
+                  aria-sort={sort.key === key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
+                >
+                  {sortBtn(key, col)}
+                </th>
+              )
+            })}
             <th className="num-col col-group-start">Time</th>
             <th>{sortBtn('started_at', 'Started')}</th>
             <th>
@@ -211,7 +224,7 @@ export default function RunsView() {
                 // First load previews the table shape: one skeleton per
                 // column. Reloads update in place and never come back here.
                 <tr key={i}>
-                  {SKELETON_COLS.map((w, j) => (
+                  {skeletonCols(metricCols.length).map((w, j) => (
                     <td key={j}>
                       <div className="skeleton skeleton-xs" style={{ width: w }} />
                     </td>
@@ -222,6 +235,8 @@ export default function RunsView() {
                 <RunRow
                   key={r.run_id}
                   run={r}
+                  metricCols={metricCols}
+                  domain={domain}
                   liveCell={liveSet.has(r.run_id)}
                   focused={i === focusIdx}
                   selected={selected.includes(r.run_id)}
@@ -258,6 +273,8 @@ export default function RunsView() {
 
 function RunRow({
   run,
+  metricCols,
+  domain,
   liveCell,
   focused,
   selected,
@@ -267,6 +284,9 @@ function RunRow({
   onFinished,
 }: {
   run: RunMeta
+  /** Domain-driven metric column display names, in order. */
+  metricCols: string[]
+  domain: Domain
   /** Holds an SSE stream; quiet running rows rely on the poll instead. */
   liveCell: boolean
   focused: boolean
@@ -317,15 +337,18 @@ function RunRow({
           <StatusBadge status={run.status} />
         )}
       </td>
-      <td className="num-col num col-group-start" title={m ? fmtMoney(m.mae) : undefined}>
-        {m ? fmtMoneyCell(m.mae) : '—'}
-      </td>
-      <td className="num-col num" title={m ? fmtMoney(m.rmse) : undefined}>
-        {m ? fmtMoneyCell(m.rmse) : '—'}
-      </td>
-      <td className="num-col num">{m ? fmtR2(m.r2) : '—'}</td>
-      <td className="num-col num">{m ? fmtPct(m.mape, 0) : '—'}</td>
-      <td className="num-col num">{m ? fmtPct(m.medape) : '—'}</td>
+      {metricCols.map((col, i) => {
+        const v = metricValue(col, m)
+        const text = v != null ? metricCellFormatter(col, domain)(v) : '—'
+        // Target-unit cells (MAE/RMSE) may be compacted; the title carries the
+        // full-precision value, matching the prior regression behaviour.
+        const title = v != null && isTargetUnitMetric(col, domain) ? metricFormatter(col, domain)(v) : undefined
+        return (
+          <td key={col} className={`num-col num${i === 0 ? ' col-group-start' : ''}`} title={title}>
+            {text}
+          </td>
+        )
+      })}
       <td className="num-col num col-group-start">{fmtDuration(run.started_at, run.finished_at)}</td>
       <td className="num" title={fmtDateTime(run.started_at)}>
         {fmtStamp(run.started_at)}

@@ -58,3 +58,23 @@ seed = 42
 subsample = 0.8
 val_fraction = 0.15
 weight_gamma = 0.0
+
+[[definitions]]
+name = "xgboost-classifier-rotation"
+predictor = "xgboost-classifier"
+dataset_tags = [
+    "rotation-auc-champion",
+    "DS-META",
+]
+created_at = "2026-06-09T17:36:45.850412293+00:00"
+updated_at = "2026-06-09T17:37:23.874429803+00:00"
+
+[definitions.hyperparams]
+colsample_bytree = 0.8
+learning_rate = 0.05
+max_depth = 6
+min_child_weight = 1.0
+n_estimators = 500
+reg_lambda = 1.0
+seed = 42
+subsample = 0.8

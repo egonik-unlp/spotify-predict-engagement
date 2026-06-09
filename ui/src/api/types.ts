@@ -2,14 +2,28 @@
 
 export type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'interrupted' | 'stopped'
 
+/** Task-dependent test metrics: regression keys (mae/rmse/r2/mape/medape) for
+ *  regression runs, classification keys (accuracy/logloss/auc/brier or
+ *  macro_f1) for classifier runs. All optional except `n_test`; which are
+ *  present follows the run's task. `domain.metrics.columns` drives display. */
 export interface Metrics {
-  mae: number
-  rmse: number
-  r2: number
+  mae?: number
+  rmse?: number
+  r2?: number
   /** fraction: 0.25 = 25% */
-  mape: number
+  mape?: number
   /** fraction */
-  medape: number
+  medape?: number
+  /** classification: fraction correct */
+  accuracy?: number
+  /** classification: cross-entropy loss */
+  logloss?: number
+  /** classification: ROC AUC */
+  auc?: number
+  /** binary classification: Brier score */
+  brier?: number
+  /** multiclass classification: macro-averaged F1 */
+  macro_f1?: number
   n_test: number
 }
 
@@ -38,6 +52,10 @@ export interface Prediction {
   rid: string
   actual: number
   predicted: number
+  /** Classification only: class probabilities — binary `[p0,p1]`, multiclass a
+   *  K-vector. `predicted` is then P(class1) (binary) / the argmax class id
+   *  (multiclass); `actual` is the class id. */
+  proba?: number[]
 }
 
 export type ProgressEvent =

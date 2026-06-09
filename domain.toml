@@ -41,7 +41,10 @@ target_noun = "taste fit"
 
 [branding]
 mark_seed = "spotify-engagement"
-mark_hue_shift = 200
+# Rotates the velocity ramp so the swarm reads green (approaching side lands on
+# the brand accent hue ~150) ↔ violet (receding) — matching the instance's
+# green-signal / violet-detail palette instead of stock lensing's red/blue.
+mark_hue_shift = 265
 
 [corpus]
 # Instance-local Qdrant on 6335 (shared, read-only, with lensing-spotify).
@@ -72,6 +75,10 @@ must_not = []
 [target]
 field = "rotation"
 transform = "none"
+# rotation is a binary label (play_count >= 2); train classifiers and rank by
+# AUC/logloss, not regression MAE. See experiments/PROJECT-FACTS.md (the binary
+# metric pivot, 2026-06-09).
+task = "binary"
 
 [target.format]
 style = "number"
@@ -79,9 +86,9 @@ symbol = ""
 locale = "en-US"
 
 [metrics]
-primary = "MAE"
-columns = ["MAE", "RMSE", "R²"]
-percent = []
+primary = "AUC"
+columns = ["AUC", "logloss", "accuracy"]
+percent = ["accuracy"]
 value_unit = "P(rotation)"
 best_models_size = 12
 

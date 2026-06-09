@@ -8,12 +8,82 @@ and must be updated. Writers: the experiment-runner agent and the
 model-definitions experiment workflow reconcile this file as part of every
 campaign report.
 
-Last updated: 2026-06-08 after the bootstrap first-run — the metadata-only
-baseline trio (baseline-median / ridge / xgboost) on the canonical p1 dataset.
-xgboost is first-on-record (MAE 2.424, R² 0.437). No campaign report yet; these
-are the seed runs.
+Last updated: 2026-06-09 after experiments/2026-06-09-rotation-classification.md —
+the first honest AUC classifier bake-off on rotation. Verdicts: (a) under the new
+classification mode (domain.toml task=binary, primary=AUC), **xgboost-classifier is
+the rotation AUC champion at 0.7429**, now REGISTERED as `xgboost-classifier-rotation`
+and auto-promoted at best-models rank 1 — rotation finally has a saved, AUC-scored,
+promotable champion. (b) The FIRST measured rotation **AUC** noise band is σ_AUC =
+0.00628, 2σ = **0.0126** (does NOT replace the 0.0086 *MAE* band — different metric).
+(c) Every dense family loses on AUC by 4.6–9.3 bands (svc-poly 0.6855 > logistic
+0.6762 > svc-rbf 0.6722 > svc-linear 0.6363 > svc-sigmoid 0.6255) — a 6th win for
+tree-read identity one-hots, now on an honest classification metric, not the binary-MAE
+artifact. (d) The 64 AE-latent cols cost 0.0079 AUC (arm4 178-col 0.7350 vs metadata-only
+0.7429) — same dilutive direction as the regression result but INSIDE the AUC band, so
+neutral-leaning-dilutive at one seed. PRIOR verdicts still stand on their own (MAE/R²)
+axis: the metadata-only xgboost regression champion (MAE 0.3879, R² 0.191) and the SVR
+refutation (every kernel worse-than-mean, ε-tube artifact) are unchanged and NOT
+comparable to these AUC numbers.
 
-## Best on record (leaderboard)
+## ACTIVE TARGET: rotation (binary taste-fit), pivoted 2026-06-08
+
+The active `[target]` is **`rotation` = (play_count ≥ 2)**, a binary [0,1]
+taste-fit signal (transform `none`, units `P(rotation)`) that feeds the
+Pathfinder `W_FIT` term. It is more learnable (xgboost AUC ~0.73–0.77) than
+engagement magnitude (R² ~0.3) and naturally spread for `fit_norm`. Engagement
+(play_count × completion_ratio, log1p) is **demoted to a documented non-target
+field** — its findings below are HISTORICAL (different target, different scale,
+MAE ~2.4). Build rotation datasets with `quality.nonpositive_price = FALSE`
+(rotation==0 is the valid negative class, not an outlier). Full pivot narrative
++ the binary-metric framework limitation: see "Taste-fit reframe for Pathfinder
+(2026-06-08)" below.
+
+## Best on record (leaderboard) — ROTATION target
+
+| model | dataset | MAE | RMSE | R² | source |
+|---|---|---|---|---|---|
+| **metadata-only xgboost** (AE-latent cols dropped; = the `mae_xgb` branch inside every blend run — not yet a saved standalone definition) | ds-20260608-204402-p64-s42 | **0.3879** | 0.4475 | **0.191** | experiments/2026-06-09-ae-xgboost-blend.md |
+| xgboost on latent+metadata combined | ds-20260608-204402-p64-s42 | 0.3965 | — | 0.166 | rotation pivot seed run (run-20260608-204415-6eeda-xgboost) |
+| xgboost on AE-latent only (64 cols) | ds-20260608-205802-p64-s42 | 0.4098 | — | 0.132 | rotation pivot seed run |
+| autoencoder-xgboost blend (kNN or ridge AE branch, w→0) | ds-20260608-204402-p64-s42 | 0.3879 (≡ metadata-only xgboost) | 0.4475 | 0.191 | experiments/2026-06-09-ae-xgboost-blend.md |
+
+Read: on rotation, **dropping the 64 AE-latent columns and running plain
+metadata xgboost is the best result on record** — feeding the latent into a
+unified xgboost (0.3965) or blending an AE-latent branch (collapses to w=0)
+both do worse or equal. The latent DILUTES rotation prediction. All numbers are
+single-split / single-seed and the 0.3879↔0.3965 edge is below an unmeasured
+noise band — the multi-seed study (below) must confirm before this leader is
+trusted or registered as a definition. NOTE: rotation R²/MAE are on the [0,1]
+binary scale and are NOT comparable to the engagement numbers below.
+
+## Best on record (AUC leaderboard) — ROTATION classification target
+
+Classification mode (domain.toml `task = binary`, primary metric **AUC**,
+higher-better; best-models ranks by AUC). Source: experiments/2026-06-09-rotation-classification.md.
+These AUC numbers are NOT comparable to the MAE/R² regression leaderboard above —
+different metric, different (calibrated probability vs ε-tube) regime.
+
+| model | dataset | AUC | logloss | accuracy | source | registered? |
+|---|---|---|---|---|---|---|
+| **xgboost-classifier** (control hyperparams: n_est 500, depth 6, lr 0.05, subsample/colsample 0.8, seed 42) | ds-20260609-141622-p1-s42 (DS-META, 115) | **0.7429** | 0.5883 | 0.6846 | experiments/2026-06-09-rotation-classification.md | **YES — `xgboost-classifier-rotation`, best-models rank 1, dataset_tags [rotation-auc-champion, DS-META]** |
+| xgboost-classifier (178-col, AE latent + metadata) | ds-20260608-204402-p64-s42 | 0.7350 | 0.6045 | 0.6818 | same | no |
+| svc (poly d3) — best non-tree | ds-20260609-141622-p1-s42 | 0.6855 | 0.6452 | 0.6450 | same | no |
+| logistic (C=1, linear floor) | ds-20260609-141622-p1-s42 | 0.6762 | 0.6329 | 0.6491 | same | no |
+| svc (rbf) | ds-20260609-141622-p1-s42 | 0.6722 | 0.6469 | 0.6426 | same | no |
+| svc (linear) | ds-20260609-141622-p1-s42 | 0.6363 | 0.6535 | 0.6373 | same | no |
+| svc (sigmoid) — worst, expected refutation | ds-20260609-141622-p1-s42 | 0.6255 | 0.6673 | 0.6267 | same | no |
+
+Read: on the honest classification metric, **xgboost-classifier is the rotation
+champion (AUC 0.7429)** — now the registered, auto-promoted standalone the regression
+work never produced. Every dense distance/margin family (logistic + 4 SVC kernels)
+loses by 4.6–9.3 AUC bands; reframing rotation as classification dissolved the
+binary-MAE ε-tube illusion that made SVR *look* competitive, and the verdict is the
+same convergent finding (identity one-hots + trees win), just honest now. 3-seed
+champion config: AUC 0.7429 / 0.7307 / 0.7345 (s42 / s17 / s101). Latent-dilution
+sub-result: arm4 (178-col) −0.0079 AUC vs metadata-only, inside the band —
+neutral-leaning-dilutive (same direction as the regression dilution, sub-band on AUC).
+
+## HISTORICAL leaderboard — engagement target (demoted, not the active target)
 
 | model | dataset | MAE | RMSE | R² | source |
 |---|---|---|---|---|---|
@@ -21,30 +91,118 @@ are the seed runs.
 | baseline-median (group-median floor) | ds-20260608-161709-p1-s42 | 3.024 | 10.625 | −0.054 | bootstrap first-run |
 | ridge (auto_alpha) | ds-20260608-161709-p1-s42 | 3.074 | 10.100 | 0.047 | bootstrap first-run |
 
-Read: xgboost beats the median floor by ~20% MAE (R² 0.437) — intrinsic song
-metadata carries real engagement signal. Ridge barely clears the floor (R²
-0.047, MAE actually a hair above baseline), so the metadata→engagement signal
-is **non-linear / interaction-heavy** — trees exploit it, a linear model does
-not. Single split, single seed each; not yet noise-characterized (see below).
+Read (historical): xgboost beats the median floor by ~20% MAE (R² 0.437) —
+intrinsic song metadata carries real engagement signal; ridge barely clears the
+floor, so the metadata→engagement signal is non-linear / interaction-heavy.
+These remain valid for the engagement *field* but it is no longer the model's
+delivered target.
 
 ## Noise bands & significance thresholds
 
-_Not yet measured. Before trusting any single-run MAE delta on this corpus,
-measure σ_train (xgboost internal-seed spread, split fixed) and σ_split
-(data-split-seed spread) on ds-20260608-161709-p1-s42 — the noise-band study is
-the natural first campaign. Until then, treat MAE differences below ~0.2 as
-noise by analogy to similar corpora, and confirm with a multi-split repeat._
+- **ROTATION target (active): MEASURED 2026-06-09 (svm-kernel campaign).**
+  σ_split = **0.00430**, significance band 2σ = **0.0086 MAE** on the [0,1] scale.
+  Measured as the sample stdev of metadata-only XGBoost MAE across three split
+  seeds on the canonical recipe: s42 0.387891, s17 0.393072, s101 0.396417 (mean
+  0.392460). Consequences: the 0.3879 (metadata-only) vs 0.3965 (latent+metadata)
+  edge is Δ 0.0086 ≈ **1·band** → "likely better, not confident"; the 0.3879 vs
+  0.4098 (AE-latent-only) gap is ~2.5·band → **real**. NOTE the binary-target MAE
+  caveat: on rotation, MAE is a degenerate skill metric (a two-level ε-tube
+  predictor scores low MAE while being worse-than-mean on R²/RMSE — see SVM
+  pitfall) — judge rotation models on R²/RMSE/AUC, use MAE only for same-family
+  band significance. The 3-seed champion-confirmation is the immediate next
+  campaign (the s17/s101 points above already are it for the champion config).
+- **ROTATION AUC band (active classification metric): MEASURED 2026-06-09
+  (rotation-classification campaign).** σ_AUC = **0.00628**, significance band 2σ =
+  **0.0126** (AUC, higher-better). Sample stdev of the registered xgboost-classifier
+  champion's AUC across three split seeds on DS-META: s42 0.742934, s17 0.730659, s101
+  0.734469 (mean 0.736020). This is the band for any "beats" claim on the AUC axis; it
+  does NOT replace the 0.0086 *MAE* band (different metric/scale/regime — MAE band for
+  regression families, AUC band for classification). Consequence: the champion beats
+  every dense family by 4.6–9.3 bands (decisive); the AE-latent dilution (−0.0079) sits
+  inside the band (neutral call, one seed).
+- **ENGAGEMENT target (historical): not measured either.** The old guidance
+  (treat MAE differences below ~0.2 as noise by analogy) stands for that scale.
 
 ## Dataset lineage
 
 | dataset (recipe) | feeds | notes |
 |---|---|---|
-| ds-20260608-161709-p1-s42 (pca=1, metadata-only: playback + curation groups OFF; nonpositive-engagement excluded) | bootstrap baseline trio (baseline-median / ridge / xgboost) | 12,106 rows (12,256 corpus − 150 engagement≤0); 9,685 train / 2,421 test @ seed 42; 115 cols = 1 PCA embedding PC + 8 metadata numerics/indicators + genre(41) + artist(61) + album_type(5); target engagement=play_count×completion_ratio (log1p). pca_dims=1 is the framework FLOOR (the build always includes ≥1 embedding PC; a zero-embedding matrix is not natively supported — see pitfalls) |
+| ds-20260608-204402-p64-s42 (pca=64 over the `spotify_tracks_song_ae` AE-latent collection + 114 metadata cols = 178; target rotation/none; `nonpositive_price=FALSE`) | rotation pivot seed run (xgboost latent+metadata, run-20260608-204415-6eeda); the entire 2026-06-09 autoencoder-xgboost blend campaign | 12,256 rows (NO exclusions — rotation==0 is the negative class), 9,805 train / 2,451 test @ seed 42. The 64 "pca" cols ARE the precomputed 64-dim song-autoencoder latent (kind.type=="pca" in the manifest), NOT a behavioral co-listening PCA. The autoencoder-xgboost predictor splits columns by this manifest kind: latent branch = the 64; metadata branch = the other 114. |
+| ds-20260608-205802-p64-s42 (pca=64 AE-latent ONLY, no metadata cols) | xgboost on AE-latent only (rotation), the AE-latent-only baseline | 64 cols. Used to measure the latent's standalone rotation signal (MAE 0.4098, R² 0.132 — weaker than metadata). |
+| ds-20260609-141622-p1-s42 (METADATA-ONLY rotation: pca floor=1, NO AE latent; same recipe as p64-s42 with AE cols dropped; target rotation/`none`; `nonpositive_price=FALSE`) | the 2026-06-09 svm-kernel scan (all SVM arms + fair-anchor control + both stage-2 blends) AND the 2026-06-09 rotation-classification bake-off (registered AUC champion `xgboost-classifier-rotation` lives on this recipe) | 115 cols = 1 pca floor + 7 numeric + 107 one-hot; 12,256 rows, 9,805/2,451 @ seed 42. The fair SVM anchor: metadata-only xgboost on this matrix = byte-identical 0.387891 to the 178-col champion (AE branch w=0), so dropping the 64 latent cols is a no-op for the tree. Built with `log_target=false` to get transform `none` (the canonical rotation recipe). |
+| ds-20260609-141641-p1-s17, ds-20260609-141641-p1-s101 (METADATA-ONLY rotation, same recipe, split seeds 17 / 101) | the rotation noise-band measurement (σ_split) | 115 cols each. metadata-only xgboost MAE s17 0.393072 / s101 0.396417 — with s42 0.387891 these three define σ_split = 0.0043 (band 0.0086). Also serve as 2 of the 3 seeds for the pending champion 3-seed confirmation. |
+| ds-20260609-141540-p1-s42 (THROWAWAY: same metadata-only recipe but built with default `log_target=true` ⇒ transform log1p) | nothing — unused | Built by mistake before `log_target=false` was set; the canonical rotation recipe is transform `none`. Left in place, fed no run. |
+| ds-20260608-161709-p1-s42 (pca=1, metadata-only over `spotify_tracks`; nonpositive-engagement excluded) — HISTORICAL (engagement) | bootstrap baseline trio (baseline-median / ridge / xgboost) | 12,106 rows (12,256 corpus − 150 engagement≤0); 9,685 train / 2,421 test @ seed 42; 115 cols = 1 PCA embedding PC + 8 metadata numerics/indicators + genre(41) + artist(61) + album_type(5); target engagement (log1p). pca_dims=1 is the framework FLOOR (see pitfalls). |
+
+### Corpus collections
+
+- **`spotify_tracks_song_ae`** (active rotation collection) — carries a
+  precomputed 64-dim song-autoencoder latent per track plus the `rotation`
+  (play_count≥2) label in payloads; the server is repointed here so Pathfinder's
+  graph is the rich song-character manifold. The latent encodes song *identity*.
+- `spotify_tracks` (historical engagement collection) — 200-dim co-listening
+  behavioral embedding + metadata.
+- `spotify_tracks_content` (rejected) — 384-dim content-text embedding +
+  ReccoBeats audio features.
 
 ## Known pitfalls per predictor family
 
 Generic priors (replace with measured facts as campaigns land):
 
+- **autoencoder-xgboost (weighted-blend ensemble) — the blend self-disables when
+  the AE branch is weak (MEASURED 2026-06-09, rotation).** `yhat = w·yhat_ae +
+  (1−w)·yhat_xgb` with `w` tuned on a train holdout. On rotation the song-AE
+  latent's standalone error (kNN best 0.4259 @ k=10, monotonically worse to
+  0.4702 @ k=200; ridge 0.4623) is uniformly worse than the metadata-XGB branch
+  (0.3879), so the tuner drives **w → 0.0 in every arm** and the blend collapses
+  to identical metadata-only xgboost. This is correct behavior, not a bug — but
+  it means the blend can only ever *match* the stronger branch here, never beat
+  it. The architecture's one real value was isolating the latent so the tuner
+  could discard it, recovering a cleaner result than the unified
+  latent+metadata xgboost (0.3879 vs 0.3965). The informative axis in the kNN
+  k-scan is the `mae_ae(k)` curve (read from on-disk metrics.json: `mae_ae`,
+  `mae_xgb`, `blend_weight` — the API does NOT surface these), not the blended
+  metric (constant across the scan). Verdict: not worth pursuing further for
+  rotation; latent is a dead modality.
+- **kernel SVM (SVR) REFUTED on rotation — and its MAE is a binary-target trap
+  (MEASURED 2026-06-09).** All four kernels on the metadata-only matrix
+  (ds-20260609-141622-p1-s42): rbf MAE 0.3847 / R² −0.130, linear 0.3901 / −0.198,
+  poly(deg3) 0.3814 / −0.137, sigmoid 0.6240 / R² −8.48 (predictions up to 24.7 —
+  classic unbounded sigmoid-SVR blow-up). Note rbf/linear/poly post LOWER MAE than
+  the 0.3879 champion yet are WORSE-THAN-MEAN on R²/RMSE (champion R² 0.191, RMSE
+  0.4475 vs SVM RMSE 0.53–0.54). Cause (from on-disk predictions.json): with
+  epsilon=0.1 on a {0,1} target the SVR snaps outputs to the tube edges — p50≈0.10,
+  p90≈0.90, a hard two-level step — which scores a deceptively low MAE (each row
+  ~0.1 off its 0/1 label) while destroying calibration/ranking. On a binary target
+  MAE is degenerate; the honest verdict (R²/RMSE) is that SVM loses decisively.
+  Verdict: do NOT pursue SVM for rotation. This is the 5th dense-regime family to
+  lose to one-hot identity here (see convergent finding).
+- **xgboost-classifier is the rotation AUC CHAMPION; logistic + every SVC kernel are
+  REFUTED on AUC (MEASURED 2026-06-09, classification mode).** On DS-META
+  (ds-20260609-141622-p1-s42, metadata-only, AUC-scored): xgboost-classifier AUC
+  **0.7429** (logloss 0.5883, acc 0.685) — registered as `xgboost-classifier-rotation`,
+  best-models rank 1. The dense families lose by 4.6–9.3 AUC bands (svc-poly 0.6855,
+  logistic 0.6762, svc-rbf 0.6722, svc-linear 0.6363, svc-sigmoid 0.6255). Unlike the
+  SVR campaign — where the binary-MAE ε-tube made rbf/linear/poly *look* competitive on
+  MAE while worse-than-mean on R² — the classification metric is honest: every SVC
+  kernel is *both* worse on AUC *and* worse on logloss/brier, same direction. Notably
+  svc-sigmoid does NOT collapse to 0.5 (stays 0.6255) — a proper probability objective
+  removes the unbounded-sigmoid blow-up that wrecked the SVR-sigmoid run. xgboost-classifier
+  control hyperparams: n_est 500, depth 6, lr 0.05, subsample/colsample 0.8, seed 42.
+  Verdict: xgboost-classifier is the family of record for rotation classification; do not
+  pursue logistic/SVC. The 64 AE-latent cols cost the classifier 0.0079 AUC (178-col 0.7350
+  vs metadata-only 0.7429) — inside the AUC band, so neutral-leaning-dilutive (same dilutive
+  direction as the regressor, sub-band on AUC). Next lever is a champion hyperparameter scan
+  + identity-resolution (vocab caps), NOT new families.
+- **blend grid-by-MAE is UNSAFE on binary targets (MEASURED 2026-06-09).** The
+  `blend` meta-predictor with weight_fit=grid optimizes validation MAE. On
+  rotation, both stage-2 blends (xgb+svm, lgbm+svm) fitted weights **[0.0, 1.0]** —
+  zeroing the better tree and keeping pure SVM — because svm(poly)'s artifact-low
+  MAE (0.3810) edges the trees' (0.387/0.388). The grid thus PROMOTED a
+  worse-than-mean member (the opposite of the AE-blend "w→0 self-disable"). Lesson:
+  for binary/rotation blends the grid objective must be R²/logloss/AUC, not MAE.
+  Until that framework fix lands, do not trust a grid-weighted rotation blend's
+  member selection.
 - Bounded-by-construction families (trees: leaf averages; rbf kernels:
   revert-to-intercept) cannot blow up through a log-target inverse;
   unbounded ones (linear models, MLPs) can — ship MLPs with
@@ -54,96 +212,84 @@ Generic priors (replace with measured facts as campaigns land):
 
 ## Known pitfalls per feature / dataset axis
 
-- **This project predicts engagement from INTRINSIC song metadata only.** The
-  canonical build keeps the `playback` group (play_count, completion_ratio,
-  skip_rate, shuffle_rate, distinct_sessions) and the `curation` group
-  (is_saved, in_playlist_count, on_repeat_count) OFF — the first two playback
-  fields literally compose the target, and curation is behaviorally entangled
-  with engagement. Turning any of them on is a deliberate sanity-ceiling /
-  soft-leakage control build, never the default; if R² jumps toward ~0.8+ when a
-  group is enabled, suspect leakage.
-- **Content-text embedding tested and REJECTED (2026-06-08).** Built an
-  alternative corpus `spotify_tracks_content` — a multilingual sentence
-  embedding (paraphrase-multilingual-MiniLM-L12-v2, 384-dim) of each track's
-  intrinsic-metadata doc ("title. Artist: X. Album: Y (type, year). Genre: Z.")
-  via `pipeline/embed_content.py` — to replace the sibling's behavioral
-  co-listening vector with a non-behavioral one. It did NOT help and a pca-dims
-  scan got monotonically WORSE: xgboost content+one-hots MAE 2.752 (p16) →
-  2.784 (p64) → 2.830 (p128) vs the **2.424 one-hot baseline**. Ablation:
-  content embedding ALONE (one-hots off, p128) = MAE 2.964 / R² 0.144, barely
-  above the no-feature median floor (R² −0.05) and far below one-hots (R²
-  0.437). Verdict: engagement is driven by artist/genre **identity** (which the
-  top-60/top-40 one-hots encode losslessly), not by semantic similarity of the
-  metadata text; the embedding blurs identity and adds noisy dims trees overfit
-  (train-loss 0.50 vs val 0.70). Lesson for this corpus: dense vectors (whether
-  behavioral co-listening or content-text) lose to categorical identity. The
-  evidence-backed levers are instead (a) RAISE vocab caps so the dominant
-  `artist=__other__` tail (currently the #1 feature, 7.1% gain) gets real
-  columns, and (b) acoustic features/embeddings (what the song *sounds* like —
-  the only axis orthogonal to identity), if obtainable.
-- **Acoustic audio features tested and REJECTED (2026-06-08).** Fetched the 11
-  Spotify-style audio features (danceability/energy/valence/tempo/acousticness/
-  instrumentalness/loudness/speechiness/liveness/key/mode) from **ReccoBeats**
-  (free non-Spotify drop-in for the deprecated Spotify endpoint), keyed by
-  `track_uri` Spotify ids — see `pipeline/fetch_audio_features.py`. Coverage
-  64.8% (7,938/12,256; misses → `af_*_missing` indicators). Written as numeric
-  fields into `spotify_tracks_content` payloads. Controlled test (same
-  collection + same seed-42 split, pca=1): audio OFF MAE **2.684** / R² 0.298
-  vs audio ON MAE **2.775** / R² 0.260 — audio features made it slightly WORSE.
-  xgboost used them (7.3% total gain, ~0.5% each) but they diluted the
-  artist/genre one-hots. Verdict: acoustic character does not add engagement
-  signal for this user. NOTE: cross-collection numbers are NOT comparable
-  (different scroll order ⇒ different split) — the original 2.424 baseline was
-  on `spotify_tracks`; the honest within-collection control here is 2.684.
-- **CONVERGENT FINDING (3 modalities): engagement is predicted by artist/genre
-  IDENTITY, not by descriptive song attributes.** Co-listening embedding
-  (~neutral), content-text embedding (hurt), acoustic features (hurt) all fail
-  to beat plain one-hots. `artist=__other__` is consistently the #1 feature.
-  Implication: the metadata-only ceiling (R²≈0.3–0.44, split-dependent) is set
-  by identity; the residual is behavioral/contextual (mood, time, discovery)
-  that no song metadata captures. The remaining lever is identity RESOLUTION —
-  raise vocab caps so the `__other__` tail gets real columns — NOT more feature
-  modalities. A noise-band study is still needed to know which deltas here are
-  even significant (the 2.684↔2.775 gap may be within xgboost's seed noise).
-- The 200-dim co-listening embedding is a BEHAVIORAL vector, not song metadata —
-  the payload-based predictors (xgboost, lightgbm, random-forest, ridge, svm)
-  are the canonical models here; embedding-based predictors would reintroduce
-  behavioral signal.
+- **Song-AE latent REJECTED for rotation (2026-06-09).** The precomputed 64-dim
+  song-autoencoder latent (`spotify_tracks_song_ae`) carries no rotation signal
+  that the artist/genre/album one-hot metadata does not already carry better.
+  Standalone it is weak (kNN best 0.426, ridge 0.462, AE-only xgboost 0.410 vs
+  metadata-only xgboost 0.388); fed into a unified xgboost it DILUTES (0.3965 vs
+  0.3879); blended it gets zeroed out (w→0). This is a FOURTH dense modality to
+  lose to categorical identity one-hots on this corpus — see the convergent
+  finding below — now confirmed on the rotation target, not just engagement.
+- **(HISTORICAL, engagement target) This project predicts engagement from
+  INTRINSIC song metadata only.** The canonical engagement build keeps the
+  `playback` group (play_count, completion_ratio, skip_rate, shuffle_rate,
+  distinct_sessions) and the `curation` group (is_saved, in_playlist_count,
+  on_repeat_count) OFF — the first two playback fields compose the target, and
+  curation is behaviorally entangled. Turning any on is a soft-leakage control
+  build. NOTE: rotation==play_count≥2 is ALSO derived from playback, so
+  play_count/completion_ratio likewise stay OFF as features for rotation; the
+  demoted `engagement` field stays OFF too (target-derived ⇒ leakage).
+- **Content-text embedding tested and REJECTED (2026-06-08, engagement).** Built
+  `spotify_tracks_content` — a multilingual sentence embedding
+  (paraphrase-multilingual-MiniLM-L12-v2, 384-dim) of each track's
+  intrinsic-metadata doc — to replace the behavioral co-listening vector. It did
+  NOT help; a pca-dims scan got monotonically WORSE (xgboost content+one-hots MAE
+  2.752 @ p16 → 2.830 @ p128 vs the **2.424 one-hot baseline**). Content
+  embedding ALONE (p128) = MAE 2.964 / R² 0.144, barely above the median floor.
+  Verdict: engagement is driven by artist/genre **identity** (top-60/top-40
+  one-hots encode it losslessly), not semantic text similarity; the embedding
+  blurs identity and adds noisy dims trees overfit.
+- **Acoustic audio features tested and REJECTED (2026-06-08, engagement).** 11
+  Spotify-style audio features from ReccoBeats, coverage 64.8%. Controlled test
+  (same collection + seed-42 split, pca=1): audio OFF MAE **2.684** / R² 0.298
+  vs audio ON MAE **2.775** / R² 0.260 — slightly WORSE; they diluted the
+  artist/genre one-hots. Cross-collection numbers are NOT comparable (different
+  scroll order ⇒ different split); the within-collection control is 2.684.
+- **CONVERGENT FINDING (4 feature modalities + now a 5th MODEL family): the
+  taste-fit signal is predicted by artist/genre IDENTITY, captured by one-hots and
+  exploited by trees — not by descriptive attributes nor by distance/margin
+  models.** Feature modalities that failed: co-listening embedding (~neutral,
+  engagement), content-text embedding (hurt, engagement), acoustic features (hurt,
+  engagement), song-AE latent (dilutes, ROTATION). And now a MODEL family fails the
+  same way: kernel SVM (rbf/linear/poly/sigmoid) on rotation is worse-than-mean
+  (R² < 0) — the dense-distance/large-margin regime blurs the sparse categorical
+  identity that trees read losslessly, exactly the prior. `artist=__other__` is
+  consistently the #1 feature on engagement. Implication: the ceiling is set by
+  identity; the residual is behavioral/contextual that no song metadata captures.
+  The remaining lever is identity RESOLUTION — raise vocab caps so the `__other__`
+  tail gets real columns — NOT more feature modalities and NOT more model families.
+  (Rotation noise band now MEASURED at 0.0086 MAE / 0.0126 AUC — see Noise bands.) 6th CONFIRMATION (2026-06-09, AUC classification): xgboost-classifier beats logistic + all 4 SVC kernels by 4.6–9.3 AUC bands on the honest classification metric — the identity-one-hots-and-trees verdict survives the metric change that exposed SVR's MAE artifact.
+- The 200-dim co-listening embedding (`spotify_tracks`) is a BEHAVIORAL vector,
+  not song metadata — the payload-based predictors (xgboost, lightgbm,
+  random-forest, ridge, svm) are the canonical models there; embedding-based
+  predictors would reintroduce behavioral signal.
 - **Framework floor: every dataset carries ≥1 PCA embedding column.** The build
   rejects `pca_dims < 1` (server `api.rs`; `pca.rs` requires `k>=1`) and all
-  predictors read the combined `features.f32` (embedding block + metadata) —
-  there is no native zero-embedding / items.json-only feature path. The
-  canonical build therefore uses `pca_dims=1` to reduce the behavioral channel
-  to a single principal component. A truly metadata-only matrix would require a
-  framework change (allow `pca_dims=0` or an embedding-exclude flag); do NOT
-  improvise it in the crates.
-  - **MEASURED (bootstrap first-run, do not assume):** that 1 PC holds 13.8% of
-    the 200-dim embedding's variance (it's the max-variance direction, so *a
-    priori* not negligible), yet xgboost gave `pca_0` only **0.98% of total
-    gain, rank 27 of 111 used features** — the model is carried by `artist` and
-    `genre_primary` one-hots. So on this split the behavioral PC contributes
-    little and the metadata-only thesis holds — but this is one PC at one split.
-    A pca-dims scan (1 → 16 → 64 → 128, metadata fixed) is the definitive test:
-    flat MAE ⇒ thesis confirmed; a sharp drop ⇒ the embedding is carrying
-    behavioral signal and we'd be drifting away from "metadata only."
+  predictors read the combined `features.f32` — there is no native
+  zero-embedding / items.json-only feature path. The engagement canonical build
+  uses `pca_dims=1` to reduce the behavioral channel to one PC. A truly
+  metadata-only matrix would require a framework change; do NOT improvise it in
+  the crates.
+  - **MEASURED (bootstrap, engagement):** that 1 PC holds 13.8% of the 200-dim
+    embedding's variance, yet xgboost gave `pca_0` only **0.98% of total gain,
+    rank 27 of 111** — carried by `artist` and `genre_primary` one-hots. One PC
+    at one split; a pca-dims scan (1→16→64→128, metadata fixed) is the definitive
+    test.
 
 ## Taste-fit reframe for Pathfinder (2026-06-08)
 
 The model's ultimate consumer is the **Pathfinder** A* search, where it supplies
 the `W_FIT` term: `cost(u→v) += W_FIT·(1 − fit_norm(v))` — a per-track [0,1]
 desirability that biases the playlist path. `pathfinder/score.py` calls
-`POST /api/models/<MODEL_NAME>/predict {point_ids}` and min-max normalizes;
-it currently log-normalizes because engagement is heavy-tailed.
+`POST /api/models/<MODEL_NAME>/predict {point_ids}` and min-max normalizes.
 
 **Reframe:** model **"enters rotation" = play_count ≥ 2** (binary, 44.5% base
 rate) instead of engagement magnitude. On the one-hot feature set, xgboost gets
 **AUC 0.765 / acc 0.715** — a genuinely useful taste-fit ranker, vs engagement
-regression's R²≈0.3. And the predicted probability is naturally spread
-(p10/p50/p90 = 0.16/0.41/0.81), so it's a cleaner Pathfinder `fit_norm` with no
-log-hack. This is the better-posed target for the Pathfinder goal: replay
-*magnitude* is contextual noise, but the *in/out* decision tracks taste-fit,
-which the features capture. (Engagement stays the documented scientific target;
-taste-fit is the actionable signal that feeds the path search.)
+regression's R²≈0.3. The predicted probability is naturally spread
+(p10/p50/p90 = 0.16/0.41/0.81), a cleaner Pathfinder `fit_norm` with no
+log-hack. (Engagement stays the documented scientific field; rotation is the
+actionable signal that feeds the path search.)
 
 **Pivot executed (2026-06-08):** domain `[target]` = `rotation` (transform none),
 engagement demoted to a documented non-target field; `rotation` (play_count>=2)
@@ -165,11 +311,219 @@ resolution is a DECISION, not an improvisation:
       binary runs succeed + promote normally — contribute upstream; OR
   (b) self-contained Pathfinder scorer: load the rotation model.ubj, score corpus
       point_ids, feed `score.py` directly (bypass the metric/promotion path).
+  NOTE (2026-06-09): the autoencoder-xgboost campaign's 6 runs all reported
+  finite MAPE/medAPE (~43.9%/47.4%) and were marked `succeeded` — that predictor
+  evidently guards the zero-actual case, so the limitation is per-predictor, not
+  universal. The native `xgboost` predictor still trips it (the seed run failed
+  on NaN).
 
 ## Best-models group curation (best-model-selector agent)
 
 Additive log of judgment-pass overrides applied via `PUT /api/best-models`
 (the deterministic top-12-by-MAE recompute can't apply these). Newest first.
 
-_No curation overrides yet — the deterministic top-12-by-MAE recompute stands
-until the first campaign warrants a judgment pass._
+### 2026-06-09 (latest) — third judgment pass after the rotation-classification (AUC) campaign
+
+State on entry: group full (12/12), 25 prior exclusions intact, no pins. Recompute
+was fresh (updated_at matched the last run finish — no manual recompute needed). The
+framework had just pivoted to classification mode (domain.toml task=binary,
+primary=AUC, higher-better). The deterministic AUC recompute correctly seated the 9
+genuine AUC-rankable classifier runs at ranks 1-9, but backfilled ranks 10-12 with
+stale promoted regression runs whose "AUC" is a degenerate `prev_value` fallback.
+
+**Excluded (5 new run ids) — verified each candidate's on-disk
+`data/runs/<id>/metrics.json` (auc field) before excluding, not by name:**
+
+1. **3 stale regression runs polluting ranks 10-12 — NOT AUC-rankable.** Each has
+   NO `auc` field; the group's "AUC" value is the run's old MAE carried in via the
+   promoted-model `prev_value` fallback on the metric-regime change (regression→AUC):
+   - `run-20260608-205802-48044-xgboost` — no auc; "AUC" 0.4098 == its mae (AE-latent-only regressor)
+   - `run-20260608-205512-593d5-xgboost` — no auc; "AUC" 0.3965 == its mae (latent+metadata regressor)
+   - `run-20260609-141717-fcbbe-autoencoder-xgboost` — no auc; "AUC" 0.3964 == its mae (w=0 champion seed point)
+   These are MAE-scored models on a different (regression) axis; they are not comparable
+   to AUC and would poison any consensus AUC predict. Excluded.
+2. **2 redundant champion control-seed duplicates (kept 627d6/s42 as the single
+   representative).** The xgboost-classifier champion config was run on three split
+   seeds; ranks 3-4 were the s101 and s17 points of the SAME config (DS-META, identical
+   hyperparams), i.e. the AUC noise-band data (mean 0.7360, σ 0.00628, 2σ 0.0126), not
+   distinct models:
+   - `run-20260609-172933-6df93-xgboost-classifier` — DS-META split s101, AUC 0.7345
+   - `run-20260609-172933-684f2-xgboost-classifier` — DS-META split s17, AUC 0.7307
+   Kept rank-1 627d6 (s42, AUC 0.7429, the registered `xgboost-classifier-rotation`
+   champion) as the single representative. NOTE: rank 2 (fffa4, AUC 0.7350) was KEPT —
+   it is a DISTINCT model (178-col AE-latent+metadata, the latent-dilution arm), not a
+   seed duplicate of the champion. This extends the redundant-seed-point de-dup rule
+   from the prior passes to the classifier campaign.
+
+**The 25 prior exclusions were left in place** — all still correct (engagement-target
+runs and the binary-MAE SVR/blend anti-predictors are not AUC-rankable rotation models).
+No pins (the champion IS registered as `xgboost-classifier-rotation`, but its best-models
+member is already the auto-selected rank-1 entry, so a pin is redundant; no confirmed
+model fell out to rescue). No unexcludes/unpins.
+
+**Result: group = 7 entries, all genuine AUC-rankable rotation classifiers, champion
+at rank 1. Candidate field is exhausted of AUC-rankable runs (no backfill possible —
+only these 9 runs carry a real auc field, and the 2 dropped are champion seed dups).**
+
+| rank | model | predictor | AUC | note |
+|---|---|---|---|---|
+| 1 | best-xgboost-classifier-...-627d6 | xgboost-classifier | 0.7429 | registered champion `xgboost-classifier-rotation` (DS-META s42) |
+| 2 | best-xgboost-classifier-...-ffffa4 | xgboost-classifier | 0.7350 | DISTINCT: 178-col AE-latent+metadata (latent-dilution arm), −0.0079 AUC vs champion, inside band |
+| 3 | best-svc-...-848b8 | svc (poly d3) | 0.6855 | best non-tree; −4.6 bands vs champion |
+| 4 | best-logistic-...-8e4d9 | logistic | 0.6762 | linear floor; −5.3 bands |
+| 5 | best-svc-...-a704f | svc (rbf) | 0.6722 | −5.6 bands |
+| 6 | best-svc-...-45798 | svc (linear) | 0.6363 | −8.5 bands |
+| 7 | best-svc-...-53bb5 | svc (sigmoid) | 0.6255 | −9.3 bands; the documented worst/refutation echo |
+
+**FLAGGED, LEFT ALONE — family monoculture / weak-vote tail.** Ranks 3-7 are five
+dense distance/margin arms (svc + logistic), all 4.6-9.3 AUC bands below the trees and
+all sharing the same correlated failure mode (they blur the sparse identity one-hots
+that the trees read losslessly — the convergent finding). For a consensus AUC predict
+they add little but correlated near-floor votes; svc-sigmoid (0.6255) is essentially a
+documented refutation point. I did NOT exclude them: they are genuine, distinct,
+AUC-rankable rotation models, and there is NO AUC-rankable backfill — excluding any
+would only shrink the group, not improve it. If a consumer's consensus predict starts
+tracking toward chance, exclude the bottom SVC kernels (sigmoid first, then linear)
+then — but that is a consumer-driven call, not pollution removal. Revisit when the
+champion hyperparameter scan (the next campaign per the report follow-ups) lands new
+tree arms that would legitimately displace the dense tail.
+
+**FRAMEWORK FOLLOW-UP (re-flagged, NOT fixed here) — `prev_value` is not invalidated
+on a metric-regime change.** The 3 stale-regression-run pollution at ranks 10-12 is a
+NEW symptom of the same binary-target metric-pipeline gap logged in the prior pass: when
+the primary metric changes regime (regression MAE → classification AUC), a promoted
+model's stored `prev_value` (its OLD MAE) is carried into the new-metric group as if it
+were an AUC, so MAE ≈ 0.40 masquerades as "AUC 0.40" and backfills the tail. The
+best-models recompute must invalidate / null a promoted model's `prev_value` when the
+served `primary_metric` differs from the metric the value was recorded under (and skip
+non-rankable members rather than backfilling them). Same root cause as the
+best-models-ranks-by-MAE-on-binary and grid-by-MAE-blend issues — worth folding into the
+single "binary-target / metric-regime metric pipeline" upstream follow-up. Out of scope
+for this curation pass.
+
+
+### 2026-06-09 (later) — second judgment pass after the SVM-kernel-rotation campaign
+
+State on entry: group full (12 slots), the 17 prior exclusions all intact. The
+recompute was fresh (updated_at matched the last run finish — no manual recompute
+needed). The SVM-kernel-rotation campaign (experiments/2026-06-09-svm-kernel-rotation.md)
+added 10 new runs (8 stage-1 + 2 stage-2 blends), and the deterministic
+top-12-by-MAE recompute PROMOTED THE ANTI-PREDICTORS to the top: ranks 1-4 and 8
+were SVM / SVM-blend runs with NEGATIVE R². On the binary `rotation` target MAE is
+degenerate — an epsilon-tube SVR snaps predictions to {0.1,0.9} and posts a low MAE
+while being worse-than-mean (R² < 0). The genuine champion (autoencoder-xgboost w=0
+== metadata-only XGBoost, MAE 0.3879 / R² +0.191) had been pushed down to ranks 5-7.
+
+**Excluded (8 new run ids) — verified each run's R² from on-disk
+`data/runs/<id>/metrics.json` before excluding (not by name alone):**
+
+1. **6 negative-R² SVM / SVM-blend anti-predictors.** All are worse-than-mean;
+   their low MAE is the binary epsilon-tube artifact, not skill:
+   - `run-20260609-143114-528ef-blend` — R² −0.134 (grid mis-selected pure SVM, weights [0,1])
+   - `run-20260609-143114-fa66a-blend` — R² −0.134 (same grid pathology, lgbm+svm)
+   - `run-20260609-141717-73727-svm` — R² −0.137 (poly, the artifact-lowest MAE 0.3814)
+   - `run-20260609-141717-89c5f-svm` — R² −0.130 (rbf)
+   - `run-20260609-141717-b980e-svm` — R² −0.198 (linear)
+   - `run-20260609-141717-fd50a-svm` — R² −8.48 (sigmoid blow-up, predictions to 24.7); excluded to bar backfill though it was below the cap.
+2. **2 redundant w=0 champion duplicates (kept e34e4 as the single representative).**
+   The campaign's two control anchors `run-20260609-141717-9a8ba-autoencoder-xgboost`
+   (178-col ctrl) and `run-20260609-141717-28b3f-autoencoder-xgboost` (metadata-only
+   ctrl) are byte-identical to the existing champion representative
+   `run-20260609-131545-e34e4-autoencoder-xgboost` (all blend_weight=0,
+   mae_xgb=0.3878913565318093, R² +0.1906, RMSE 0.4475). Same config, same seed-42
+   split — the same model counted thrice. Kept e34e4 (consistent with the first pass),
+   excluded the two duplicates. This extends the redundant-w=0-blend de-dup rule.
+
+**The 17 prior exclusions were left in place** — all still correct (engagement-target
+runs are incomparable to rotation; the earlier redundant w=0 blends are still
+redundant). No pins, no unexcludes, no unpins.
+
+**Result: group = 5 entries, all rotation, all positive R². Candidate field is
+exhausted of positive-R² rotation runs (no backfill possible).**
+
+| rank | model | predictor | MAE | R² | note |
+|---|---|---|---|---|---|
+| 1 | best-autoencoder-xgboost-...-e34e4 | autoencoder-xgboost (w=0 == metadata-only xgboost) | 0.3879 | +0.191 | the on-record rotation champion |
+| 2 | best-autoencoder-xgboost-...-aac3d | autoencoder-xgboost (w=0) | 0.3931 | +0.181 | SAME champion config, split seed s17 — a noise-band point, NOT a distinct model |
+| 3 | best-autoencoder-xgboost-...-fcbbe | autoencoder-xgboost (w=0) | 0.3964 | +0.178 | SAME champion config, split seed s101 — a noise-band point, NOT a distinct model |
+| 4 | best-xgboost-...-593d5 | xgboost | 0.3965 | +0.166 | distinct: latent+metadata combined |
+| 5 | best-xgboost-...-48044 | xgboost | 0.4098 | +0.132 | distinct: AE-latent-only (64 cols) |
+
+The three DISTINCT rotation models are ranks 1, 4, 5 (champion 0.3879, latent+metadata
+0.3965, AE-latent-only 0.4098). Ranks 2-3 (aac3d/fcbbe) are the s17/s101 seed points of
+the champion config — left in the group as legitimate positive-R² members (they are the
+3-seed noise-band data, σ_split=0.0043), but they are NOT new models and must not be cited
+as distinct rotation families. Per the measured band (0.0086), the champion-vs-latent+metadata
+edge (Δ 0.0086 ≈ 1·band) is "likely better, not confident"; the champion-vs-AE-latent-only gap
+(~2.5·band) is real. No pin made: the champion is still not a saved standalone definition (pins
+require a promoted model), and the spread between distinct models is at/below 1·band anyway.
+
+**FRAMEWORK GAP (flagged, NOT fixed here).** This pollution episode is a symptom of a
+real framework gap: the best-models group ranks by MAE, but on a binary target MAE is
+degenerate (a two-level epsilon-tube predictor scores low MAE while being worse-than-mean).
+The deterministic recompute therefore auto-promotes anti-predictors to the TOP, and a
+curation pass has to manually exclude them every campaign. This is the same root cause as
+the NaN-MAPE binary-metric limitation and the grid-by-MAE blend mis-selection (see pitfalls).
+Worth a single coherent "binary-target metric pipeline" follow-up upstream: the best-models
+ranking (and the blend grid objective) should use R²/logloss/AUC for binary targets, not MAE.
+Out of scope for this curation pass.
+
+
+### 2026-06-09 — first judgment pass after the AE+XGBoost blend campaign
+
+State on entry: group full (12/12), no prior overrides. Recompute was fresh
+(matched the last run finish; no manual recompute needed). The raw top-12-by-MAE
+had two pathologies the deterministic sort cannot fix.
+
+**Excluded (17 run ids) — two groups:**
+
+1. **5 redundant w=0 blends (kept 1 representative).** The campaign's 6
+   `autoencoder-xgboost` runs (kNN k=10/25/50/100/200 + ridge) all tuned the
+   blend weight to w=0, making every run byte-identical metadata-only XGBoost
+   (MAE 0.3878913565318093, R² 0.1906, RMSE 0.4475 — identical to the last
+   significant digit). The recompute ranked all 6 at the top, so 6 group slots
+   (and any consensus-predict vote) were one model counted sixfold. Kept
+   `run-20260609-131545-e34e4` (k=10) as the single representative; excluded the
+   other five run ids (5eec5, 2f638, b3b88, e84cf, 29775). The choice of which
+   to keep is cosmetic (all 6 are numerically identical); k=10 had the best
+   AE-branch diagnostic. NOTE: the surviving rank-1 entry is LABELLED
+   `autoencoder-xgboost` but is, by w=0, exactly metadata-only XGBoost — the
+   honest champion. It is not a saved standalone definition, so it cannot be
+   pinned; it stays as the auto-selected representative.
+2. **All 12 engagement-target runs (different scale, not comparable).** The
+   active target pivoted to `rotation` ([0,1], MAE ~0.39) on 2026-06-08;
+   the historical `engagement` runs (MAE ~2.4-3.0, log1p scale) are not
+   comparable and would poison any rotation consensus predict. Because the
+   rotation candidate field is tiny (only 8 rotation runs exist, 6 of them the
+   identical blends), the top-12-by-MAE backfills engagement runs by raw numeric
+   MAE no matter how many I remove — so I excluded all of them: the 4 originally
+   in the group (xgboost 33428/991d6/89a30/8ce60) plus the 8 that backfilled on
+   the next recompute (xgboost d03b0/ef048/ea2a2/f3393/5982c, baseline-median
+   92886, ridge f1152/ff724).
+
+**Result: group = 3 entries, all rotation, all dataset-family ds-2026...-p64.**
+This is the honest size of the active-target candidate field, not a defect:
+
+| rank | model | predictor | MAE | note |
+|---|---|---|---|---|
+| 1 | best-autoencoder-xgboost-...-e34e4 | autoencoder-xgboost (w=0 ⇒ metadata-only xgboost) | 0.3879 | the on-record rotation leader |
+| 2 | best-xgboost-...-593d5 | xgboost | 0.3965 | latent+metadata combined |
+| 3 | best-xgboost-...-48044 | xgboost | 0.4098 | AE-latent-only |
+
+**Family diversity / flukes:** not actionable here. The rotation field is one
+real predictor family (xgboost; the blend collapses to it) on one dataset family;
+there is no second rotation family to pin in for diversity, and pinning an
+off-target engagement model for "diversity" would be wrong (incomparable target).
+No suspicious metrics: R² ~0.13-0.19 is modest-and-believable, n_test=2451 is
+healthy, no leakage signature. **The 0.3879 vs 0.3965 vs 0.4098 spread is BELOW
+the UNMEASURED rotation noise band** (the historical engagement band does not
+transfer) — so ranks 1-3 are "equal, likely", not a confirmed ordering. No pin
+was made: pins require a promoted model, the metadata-only champion was never
+saved as a standalone definition, and the spread is not significant anyway.
+
+**Revisit triggers:** (a) when the rotation noise-band study lands (the immediate
+next campaign per the AE-blend follow-ups), re-rank with significance; (b) when
+the metadata-only xgboost is registered + promoted as a first-class definition,
+consider pinning it and unexcluding the redundant-blend reason becomes moot;
+(c) the engagement exclusions are permanent for as long as `rotation` is the
+active target — revert (`unexclude`) only if the target pivots back.

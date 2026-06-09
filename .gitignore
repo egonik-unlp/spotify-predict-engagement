@@ -8,7 +8,10 @@ predictors/flux-cnn/Manifest.toml
 predictors/.venv/
 pathfinder/.venv/
 pathfinder/__pycache__/
+predictors/__pycache__/
 pathfinder/.spotify-token.json
+# Raw Spotify export data (instance data; rebuilt into the Qdrant corpus)
+extended-2026/
 docs/figures/*.pdf
 docs/experiments.pdf
 docs/api.pdf

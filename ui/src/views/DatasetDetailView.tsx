@@ -12,7 +12,8 @@ import StatusBadge from '../components/StatusBadge'
 import ViewHeader from '../components/ViewHeader'
 import { useAsync } from '../hooks/useAsync'
 import { loadItems, loadSplit } from '../lib/itemsCache'
-import { fmtDateTime, fmtMoney, fmtPct, fmtR2, fmtTick, shortDatasetId } from '../lib/format'
+import { fmtDateTime, fmtMoney, fmtPct, fmtTick, shortDatasetId } from '../lib/format'
+import { metricFormatter, metricValue } from '../lib/metrics'
 import { ruleLabel } from '../lib/rules'
 import { useDomain } from '../lib/DomainContext'
 import {
@@ -371,9 +372,18 @@ function ExportPanel({ m }: { m: Manifest }) {
 /* ---------------- B. lineage ---------------- */
 
 function Lineage({ datasetId }: { datasetId: string }) {
+  const domain = useDomain()
   const runs = useAsync(() => api.listRuns(), [])
   const models = useAsync(() => api.listModels(), [])
   const definitions = useAsync(() => api.listDefinitions(), [])
+  // Two task-aware columns: the primary metric and the next column (e.g.
+  // MAE + R² for regression, AUC + logloss for classification).
+  const cols = useMemo(() => {
+    const c = domain.metrics.columns
+    const primary = domain.metrics.primary
+    const second = c.find((n) => n !== primary)
+    return [primary, ...(second ? [second] : [])]
+  }, [domain.metrics.columns, domain.metrics.primary])
 
   const myRuns = useMemo(
     () => (runs.data ?? []).filter((r) => r.dataset_id === datasetId),
@@ -413,8 +423,9 @@ function Lineage({ datasetId }: { datasetId: string }) {
               <th>Predictor</th>
               <th>Definition</th>
               <th>Status</th>
-              <th className="num-col">MAE</th>
-              <th className="num-col">R²</th>
+              {cols.map((c) => (
+                <th key={c} className="num-col">{c}</th>
+              ))}
               <th>Started</th>
             </tr>
           </thead>
@@ -431,8 +442,14 @@ function Lineage({ datasetId }: { datasetId: string }) {
                 <td>
                   <StatusBadge status={r.status} />
                 </td>
-                <td className="num-col num">{r.metrics ? fmtMoney(r.metrics.mae) : '—'}</td>
-                <td className="num-col num">{r.metrics ? fmtR2(r.metrics.r2) : '—'}</td>
+                {cols.map((c) => {
+                  const v = metricValue(c, r.metrics)
+                  return (
+                    <td key={c} className="num-col num">
+                      {v != null ? metricFormatter(c, domain)(v) : '—'}
+                    </td>
+                  )
+                })}
                 <td className="num">{fmtDateTime(r.started_at)}</td>
               </tr>
             ))}

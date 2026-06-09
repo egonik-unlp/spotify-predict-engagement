@@ -31,6 +31,7 @@ import {
   shortRunId,
 } from '../lib/format'
 import './rundetail.css'
+import { metricFormatter, metricValue } from '../lib/metrics'
 import { useDocTitle, useDomain } from '../lib/DomainContext'
 import { itemByline, itemLabel, itemTitle } from '../lib/itemDisplay'
 
@@ -469,12 +470,19 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
   const itemsAsync = useAsync(() => loadItems(run.dataset_id).catch((): Items => ({})), [run.dataset_id])
   const items = itemsAsync.data ?? null
   const m = run.metrics ?? ({} as Metrics)
+  // Task detection: a classifier run carries no regression error metrics but
+  // does report accuracy/auc. Drives the strip, the scatter and the
+  // suspicious-row (percentage-error) tooling, which are regression-only.
+  const isClassification = m.mae == null && (m.auc != null || m.accuracy != null)
   const tableRef = useRef<HTMLDivElement>(null)
   const [sort, setSort] = useState<{ key: PredSort; dir: 1 | -1 }>({ key: 'abs_err', dir: -1 })
   const [selectedRow, setSelectedRow] = useState<number | null>(null)
   const [excludeSuspicious, setExcludeSuspicious] = useState(false)
 
-  const suspicious = useMemo(() => suspiciousRowIds(preds.data ?? []), [preds.data])
+  const suspicious = useMemo(
+    () => (isClassification ? new Set<number>() : suspiciousRowIds(preds.data ?? [])),
+    [preds.data, isClassification],
+  )
   const filteredMetrics = useMemo(
     () =>
       excludeSuspicious && suspicious.size > 0
@@ -529,11 +537,14 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
       <MetricStrip
         ariaLabel="Test-set metrics; each opens the predictions behind it"
         metrics={[
-          { label: 'MAE', value: fmtMoney(m.mae), hint: 'mean absolute error', onClick: () => jumpToTable('abs_err') },
-          { label: 'RMSE', value: fmtMoney(m.rmse), hint: 'outlier-sensitive', onClick: () => jumpToTable('abs_err') },
-          { label: 'R²', value: fmtR2(m.r2), hint: 'target-space fit', onClick: () => jumpToTable('abs_err') },
-          { label: 'MAPE', value: fmtPct(m.mape, 0), hint: 'mean % error', onClick: () => jumpToTable('pct_err') },
-          { label: 'medAPE', value: fmtPct(m.medape), hint: 'median % error', onClick: () => jumpToTable('pct_err') },
+          ...domain.metrics.columns.map((col) => {
+            const v = metricValue(col, m)
+            return {
+              label: col,
+              value: v != null ? metricFormatter(col, domain)(v) : '—',
+              onClick: () => jumpToTable(isClassification ? 'predicted' : 'abs_err'),
+            }
+          }),
           { label: 'test items', value: m.n_test.toLocaleString() },
         ]}
       />
@@ -555,9 +566,9 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
           </label>
           {filteredMetrics && (
             <p className="filtered-strip num" role="status">
-              filtered: MAE {fmtMoney(filteredMetrics.mae)} · RMSE {fmtMoney(filteredMetrics.rmse)} · R²{' '}
-              {fmtR2(filteredMetrics.r2)} · MAPE {fmtPct(filteredMetrics.mape, 0)} · medAPE{' '}
-              {fmtPct(filteredMetrics.medape)} · n {filteredMetrics.n_test.toLocaleString()}
+              filtered: MAE {fmtMoney(filteredMetrics.mae!)} · RMSE {fmtMoney(filteredMetrics.rmse!)} · R²{' '}
+              {fmtR2(filteredMetrics.r2!)} · MAPE {fmtPct(filteredMetrics.mape!, 0)} · medAPE{' '}
+              {fmtPct(filteredMetrics.medape!)} · n {filteredMetrics.n_test.toLocaleString()}
               <span className="muted"> (official metrics above are unchanged)</span>
             </p>
           )}
@@ -568,13 +579,22 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
 
       <div className="charts-grid">
         <div>
-          <h2 className="panel-title">Predicted vs actual {domain.project.target_noun}</h2>
-          <ScatterChart
-            predictions={preds.data ?? []}
-            onSelect={selectFromScatter}
-            selectedRowId={selectedRow}
-            label={(rowId) => itemLabel(domain, itemByRow.get(rowId))}
-          />
+          {isClassification ? (
+            <>
+              <h2 className="panel-title">Classification outcome</h2>
+              <ClassificationSummary predictions={preds.data ?? []} />
+            </>
+          ) : (
+            <>
+              <h2 className="panel-title">Predicted vs actual {domain.project.target_noun}</h2>
+              <ScatterChart
+                predictions={preds.data ?? []}
+                onSelect={selectFromScatter}
+                selectedRowId={selectedRow}
+                label={(rowId) => itemLabel(domain, itemByRow.get(rowId))}
+              />
+            </>
+          )}
         </div>
         <div className="charts-col">
           <div>
@@ -587,10 +607,17 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
               </>
             )}
           </div>
-          <div>
-            <h2 className="panel-title">Error distribution</h2>
-            <ErrorHistogram series={[{ label: run.predictor, predictions: preds.data ?? [], style: 'fill' }]} />
-          </div>
+          {isClassification ? (
+            <div>
+              <h2 className="panel-title">Predicted probability</h2>
+              <ProbabilityHistogram predictions={preds.data ?? []} />
+            </div>
+          ) : (
+            <div>
+              <h2 className="panel-title">Error distribution</h2>
+              <ErrorHistogram series={[{ label: run.predictor, predictions: preds.data ?? [], style: 'fill' }]} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -610,6 +637,120 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
         />
       </div>
     </>
+  )
+}
+
+/* ---------------- classification views ----------------
+ * Classifier runs have no predicted-vs-actual scalar to scatter. Instead:
+ * a confusion / accuracy summary (binary: a 2×2 at threshold 0.5; multiclass:
+ * a correct-vs-wrong tally), and a histogram of the model's predicted
+ * probability for the positive class. Both read `predicted`/`actual`/`proba`. */
+
+function ClassificationSummary({ predictions }: { predictions: Prediction[] }) {
+  const cells = useMemo(() => {
+    const n = predictions.length
+    if (n === 0) return null
+    // Binary when every row carries a 2-vector proba (or none do — fall back to
+    // a 0.5 threshold on `predicted` = P(class1)). Multiclass otherwise.
+    const multiclass = predictions.some((p) => (p.proba?.length ?? 0) > 2)
+    if (multiclass) {
+      const correct = predictions.filter((p) => Math.round(p.predicted) === Math.round(p.actual)).length
+      return [
+        { label: 'correct', value: correct.toLocaleString() },
+        { label: 'wrong', value: (n - correct).toLocaleString() },
+        { label: 'accuracy', value: `${((correct / n) * 100).toFixed(1)}%` },
+      ]
+    }
+    let tp = 0
+    let tn = 0
+    let fp = 0
+    let fn = 0
+    for (const p of predictions) {
+      const pos = p.predicted >= 0.5
+      const actualPos = p.actual >= 0.5
+      if (pos && actualPos) tp++
+      else if (pos && !actualPos) fp++
+      else if (!pos && actualPos) fn++
+      else tn++
+    }
+    return [
+      { label: 'true pos', value: tp.toLocaleString() },
+      { label: 'false pos', value: fp.toLocaleString() },
+      { label: 'false neg', value: fn.toLocaleString() },
+      { label: 'true neg', value: tn.toLocaleString() },
+    ]
+  }, [predictions])
+
+  if (!cells) return <div className="chart-empty">No predictions</div>
+  return (
+    <>
+      <MetricStrip ariaLabel="Confusion summary at threshold 0.5" metrics={cells} />
+      <p className="muted" style={{ marginTop: 'var(--sp-2)' }}>
+        Classified at a 0.5 probability threshold. Per-item probabilities are in the table below.
+      </p>
+    </>
+  )
+}
+
+/** Histogram of P(positive class) over the test set: `proba[1]` when present,
+ *  else `predicted` (which is P(class1) for binary runs). 20 bins over [0,1]. */
+function ProbabilityHistogram({ predictions }: { predictions: Prediction[] }) {
+  const W = 640
+  const H = 200
+  const M = { top: 18, right: 16, bottom: 32, left: 44 }
+  const N_BINS = 20
+  const counts = useMemo(() => {
+    const c = new Array<number>(N_BINS).fill(0)
+    for (const p of predictions) {
+      const v = p.proba && p.proba.length >= 2 ? p.proba[1] : p.predicted
+      const i = Math.min(N_BINS - 1, Math.max(0, Math.floor(v * N_BINS)))
+      c[i]++
+    }
+    return c
+  }, [predictions])
+
+  if (predictions.length === 0) return <div className="chart-empty">No predictions</div>
+
+  const maxCount = Math.max(1, ...counts)
+  const bw = (W - M.left - M.right) / N_BINS
+  const yMap = (n: number) => H - M.bottom - (n / maxCount) * (H - M.top - M.bottom)
+
+  return (
+    <div className="chart" role="img" aria-label="Distribution of the model's predicted probability for the positive class.">
+      <svg viewBox={`0 0 ${W} ${H}`}>
+        {[0.25, 0.5, 0.75, 1].map((f) => (
+          <g key={f}>
+            <line className="grid-line" x1={M.left} x2={W - M.right} y1={yMap(f * maxCount)} y2={yMap(f * maxCount)} />
+            <text className="tick-label" x={M.left - 5} y={yMap(f * maxCount) + 3} textAnchor="end">
+              {Math.round(f * maxCount)}
+            </text>
+          </g>
+        ))}
+        {counts.map((c, i) =>
+          c === 0 ? null : (
+            <rect
+              key={i}
+              x={M.left + i * bw + 0.5}
+              width={bw - 1}
+              y={yMap(c)}
+              height={H - M.bottom - yMap(c)}
+              fill="var(--accent, var(--ink))"
+            />
+          ),
+        )}
+        {/* threshold line at 0.5 */}
+        <line x1={M.left + 0.5 * (W - M.left - M.right)} x2={M.left + 0.5 * (W - M.left - M.right)} y1={M.top} y2={H - M.bottom} stroke="var(--hairline-strong)" strokeWidth={1} strokeDasharray="3 3" />
+        <line className="axis-line" x1={M.left} x2={W - M.right} y1={H - M.bottom} y2={H - M.bottom} />
+        {[0, 0.25, 0.5, 0.75, 1].map((t) => (
+          <text key={t} className="tick-label" x={M.left + t * (W - M.left - M.right)} y={H - M.bottom + 14} textAnchor="middle">
+            {t}
+          </text>
+        ))}
+        <text className="axis-title" x={(M.left + W - M.right) / 2} y={H - 4} textAnchor="middle">
+          P(positive class)
+        </text>
+      </svg>
+    </div>
   )
 }
 

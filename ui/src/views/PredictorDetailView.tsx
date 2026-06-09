@@ -7,7 +7,9 @@ import { DatasetRef, DefinitionRef, PredictorRef, RunRef } from '../components/E
 import StatusBadge from '../components/StatusBadge'
 import ViewHeader from '../components/ViewHeader'
 import { useAsync } from '../hooks/useAsync'
-import { fmtDateTime, fmtMoney, fmtR2 } from '../lib/format'
+import { fmtDateTime } from '../lib/format'
+import { metricFormatter, metricValue } from '../lib/metrics'
+import { useDomain } from '../lib/DomainContext'
 import './predictordetail.css'
 
 /* A predictor is a fixed registry entry, not user CRUD: this page reads the
@@ -24,8 +26,15 @@ function paramRange(p: Param): string {
 
 export default function PredictorDetailView() {
   const { name } = useParams<{ name: string }>()
+  const domain = useDomain()
   const predictors = useAsync(() => api.listPredictors(), [])
   const runs = useAsync(() => api.listRuns(), [])
+  // Task-aware lineage metric columns: primary + the next column.
+  const cols = useMemo(() => {
+    const primary = domain.metrics.primary
+    const second = domain.metrics.columns.find((n) => n !== primary)
+    return [primary, ...(second ? [second] : [])]
+  }, [domain.metrics.columns, domain.metrics.primary])
 
   const p = predictors.data?.find((x) => x.name === name)
 
@@ -177,8 +186,9 @@ export default function PredictorDetailView() {
                 <th>Dataset</th>
                 <th>Definition</th>
                 <th>Status</th>
-                <th className="num-col">MAE</th>
-                <th className="num-col">R²</th>
+                {cols.map((c) => (
+                  <th key={c} className="num-col">{c}</th>
+                ))}
                 <th>Started</th>
               </tr>
             </thead>
@@ -201,8 +211,14 @@ export default function PredictorDetailView() {
                   <td>
                     <StatusBadge status={r.status} />
                   </td>
-                  <td className="num-col num">{r.metrics ? fmtMoney(r.metrics.mae) : '—'}</td>
-                  <td className="num-col num">{r.metrics ? fmtR2(r.metrics.r2) : '—'}</td>
+                  {cols.map((c) => {
+                    const v = metricValue(c, r.metrics)
+                    return (
+                      <td key={c} className="num-col num">
+                        {v != null ? metricFormatter(c, domain)(v) : '—'}
+                      </td>
+                    )
+                  })}
                   <td className="num">{fmtDateTime(r.started_at)}</td>
                 </tr>
               ))}

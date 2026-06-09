@@ -726,6 +726,304 @@ min = 0.0
 max = 2.0
 
 [[predictors]]
+name = "xgboost-classifier"
+display_name = "XGBoost Classifier"
+language = "Python"
+framework = "XGBoost"
+description = "Gradient-boosted trees optimizing logistic / softmax loss for a binary or multiclass target. Emits calibrated class probabilities; scored by AUC / logloss / accuracy. Pair with a classification-task domain."
+command = "predictors/.venv/bin/python"
+args = ["predictors/xgboost-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/xgboost-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "n_estimators"
+label = "boosting rounds"
+type = "int"
+default = 500
+min = 10
+max = 10000
+
+[[predictors.params]]
+name = "max_depth"
+label = "tree depth"
+type = "int"
+default = 6
+min = 1
+max = 20
+
+[[predictors.params]]
+name = "learning_rate"
+label = "learning rate"
+type = "float"
+default = 0.05
+min = 0.001
+max = 1.0
+
+[[predictors.params]]
+name = "subsample"
+label = "row subsample"
+type = "float"
+default = 0.8
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "colsample_bytree"
+label = "column subsample"
+type = "float"
+default = 0.8
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "min_child_weight"
+label = "min child weight"
+type = "float"
+default = 1.0
+min = 0.0
+max = 1000.0
+
+[[predictors.params]]
+name = "reg_lambda"
+label = "L2 regularization"
+type = "float"
+default = 1.0
+min = 0.0
+max = 1000.0
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
+
+[[predictors]]
+name = "logistic"
+display_name = "Logistic Regression"
+language = "Python"
+framework = "scikit-learn"
+description = "Standardized linear classifier (logistic / multinomial softmax) — a clean linear baseline on the categorical-identity features. Emits calibrated class probabilities; scored by AUC / logloss / accuracy."
+command = "predictors/.venv/bin/python"
+args = ["predictors/logistic/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/logistic/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "C"
+label = "inverse regularization (C)"
+type = "float"
+default = 1.0
+min = 0.0001
+max = 10000.0
+
+[[predictors.params]]
+name = "max_iter"
+label = "max iterations"
+type = "int"
+default = 2000
+min = 100
+max = 100000
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
+
+[[predictors]]
+name = "svc"
+display_name = "SVC (kernel classifier)"
+language = "Python"
+framework = "scikit-learn"
+description = "Support-vector classifier with probability estimates (Platt scaling) across kernels — the classification counterpart to the SVR kernel scan, scored honestly by AUC / logloss instead of a degenerate regression MAE. rbf/poly arms are slow on large n."
+command = "predictors/.venv/bin/python"
+args = ["predictors/svc/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/svc/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "kernel"
+label = "kernel"
+type = "enum"
+default = "rbf"
+options = ["rbf", "linear", "poly", "sigmoid"]
+
+[[predictors.params]]
+name = "C"
+label = "inverse regularization (C)"
+type = "float"
+default = 1.0
+min = 0.0001
+max = 10000.0
+
+[[predictors.params]]
+name = "gamma"
+label = "kernel coefficient"
+type = "enum"
+default = "scale"
+options = ["scale", "auto"]
+
+[[predictors.params]]
+name = "degree"
+label = "poly degree"
+type = "int"
+default = 3
+min = 2
+max = 6
+
+[[predictors.params]]
+name = "coef0"
+label = "kernel coef0 (poly/sigmoid)"
+type = "float"
+default = 0.0
+min = -10.0
+max = 10.0
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
+
+[[predictors]]
+name = "autoencoder-xgboost"
+display_name = "Autoencoder + XGBoost (blend)"
+language = "Python"
+framework = "scikit-learn / XGBoost"
+description = "Weighted-blend ensemble: an AE-latent regressor (kNN or ridge on the song-autoencoder latent columns = identity) blended with XGBoost on the metadata columns (the rest). Blend weight tuned on an internal train holdout. Pair with a dataset built off the song-AE latent collection."
+command = "predictors/.venv/bin/python"
+args = ["predictors/autoencoder-xgboost/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/autoencoder-xgboost/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "ae_branch"
+label = "AE-branch regressor (over latent cols)"
+type = "enum"
+default = "knn"
+options = ["knn", "ridge"]
+
+[[predictors.params]]
+name = "knn_k"
+label = "kNN neighbors (knn branch)"
+type = "int"
+default = 25
+min = 1
+max = 500
+
+[[predictors.params]]
+name = "knn_weights"
+label = "kNN weighting (knn branch)"
+type = "enum"
+default = "distance"
+options = ["distance", "uniform"]
+
+[[predictors.params]]
+name = "ridge_auto"
+label = "auto alpha via RidgeCV (ridge branch)"
+type = "bool"
+default = true
+
+[[predictors.params]]
+name = "ridge_alpha"
+label = "ridge alpha (ridge branch, when auto off)"
+type = "float"
+default = 1.0
+min = 0.0
+max = 100000.0
+
+[[predictors.params]]
+name = "n_estimators"
+label = "XGB boosting rounds"
+type = "int"
+default = 500
+min = 10
+max = 10000
+
+[[predictors.params]]
+name = "max_depth"
+label = "XGB tree depth"
+type = "int"
+default = 6
+min = 1
+max = 20
+
+[[predictors.params]]
+name = "learning_rate"
+label = "XGB learning rate"
+type = "float"
+default = 0.05
+min = 0.001
+max = 1.0
+
+[[predictors.params]]
+name = "subsample"
+label = "XGB row subsample"
+type = "float"
+default = 0.8
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "colsample_bytree"
+label = "XGB column subsample"
+type = "float"
+default = 0.8
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "min_child_weight"
+label = "XGB min child weight"
+type = "float"
+default = 1.0
+min = 0.0
+max = 1000.0
+
+[[predictors.params]]
+name = "reg_lambda"
+label = "XGB L2 regularization"
+type = "float"
+default = 1.0
+min = 0.0
+max = 1000.0
+
+[[predictors.params]]
+name = "blend_weight"
+label = "AE blend weight (< 0 = auto-tune)"
+type = "float"
+default = -1.0
+min = -1.0
+max = 1.0
+
+[[predictors.params]]
+name = "blend_grid"
+label = "auto blend grid resolution"
+type = "int"
+default = 21
+min = 3
+max = 101
+
+[[predictors.params]]
+name = "val_fraction"
+label = "internal holdout fraction (of train)"
+type = "float"
+default = 0.2
+min = 0.05
+max = 0.5
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
+
+[[predictors]]
 name = "lightgbm"
 display_name = "LightGBM"
 language = "Python"

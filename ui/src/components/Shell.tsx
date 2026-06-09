@@ -20,8 +20,10 @@ export default function Shell() {
       <header className={stuck ? 'topbar is-stuck' : 'topbar'}>
         <div className="topbar-inner">
           <NavLink to="/" className="wordmark">
-            {/* The instance's seeded velocity-map mark (branding/make_mark.py). */}
-            <img className="wordmark-glyph" src="/brand/mark-dark.svg" width={18} height={18} alt="" />
+            {/* The instance's Velocity-Map mark (branding/make_mark.py), tuned
+                green↔violet via domain.toml mark_hue_shift. Larger, and the
+                swarm orbits slowly — the lens turning. Reduced-motion stills it. */}
+            <img className="wordmark-glyph" src="/brand/mark-dark.svg" width={34} height={34} alt="" />
             lensing <span className="wordmark-dim">· {domain.project.title}</span>
           </NavLink>
           {/* The pipeline spine, in pipeline order: build → train → promote. */}

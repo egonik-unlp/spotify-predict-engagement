@@ -28,7 +28,7 @@ runs, promoted models and predictions behind a React UI.
   export), runs + metrics, promoted-model records, the best-models group,
   dataset index, run events. `zig build migrate-data` backfills it from the
   files and prints a consistency report — it never modifies the files.
-- The **best-models group** (top-12 by MAE)
+- The **best-models group** (top-12 by AUC)
   is server-maintained: recomputed on every run completion and model
   promotion/deletion, auto-promoting top runs. Served at
   `GET /api/best-models`; consensus predictions at

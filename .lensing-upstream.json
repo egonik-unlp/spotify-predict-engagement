@@ -1211,11 +1211,11 @@
       "kind": "framework"
     },
     "assets/logo.svg": {
-      "sha256": "a6ef6f61ed29e5b87eb6489e728d77c9e2a72ffc898071835016075d3ad97856",
+      "sha256": "f56648aea8cd4f7c7ad16e892e9c2cf53ea2f68643e78bf3206ada9ae1f4894f",
       "kind": "framework"
     },
     "assets/mark.svg": {
-      "sha256": "ba11549257e16d4bd23d2b5fe1ea08973b206c8e6d16ae699f80d56bf360fd10",
+      "sha256": "923cf06f08f3980a7da546a9926582e132b6f0654c124144b6d532d7f517a3de",
       "kind": "framework"
     },
     "build.zig": {

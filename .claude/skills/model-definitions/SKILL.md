@@ -23,7 +23,7 @@ hyperparameters + dataset tags) for this repo's taste fit-prediction experiments
 | **Predictor** | training code + param *schema* | `registry.toml` (hand-edited) | — |
 | **Definition** | named preset: predictor + concrete hyperparam *values* + dataset tags | `models.toml` (repo root, server-managed) | definitions |
 | **Promoted model** | frozen weights snapshot of a succeeded/stopped run (or any run with a saved checkpoint) | `data/models/<name>/` (gitignored) | models |
-| **Best-models group** | server-maintained top-12 by MAE over runs + promoted models; recomputed automatically on run completion and promotion | `GET /api/best-models` (mirrored in `data/best-models.json` + Postgres) | — |
+| **Best-models group** | server-maintained top-12 by AUC over runs + promoted models; recomputed automatically on run completion and promotion | `GET /api/best-models` (mirrored in `data/best-models.json` + Postgres) | — |
 
 Definitions and promoted models have **separate namespaces**; renaming one never
 touches the other. Names must match `^[a-z0-9][a-z0-9-]{0,63}$` — validate before
@@ -99,7 +99,7 @@ curl -s localhost:8096/api/models -H content-type:application/json \
 ```
 
 Promotion (and every run completion) automatically triggers the server's
-best-models recompute — the top-12-by-MAE
+best-models recompute — the top-12-by-AUC
 group at `GET localhost:8096/api/best-models` stays current on its own, and
 top runs nobody promoted get auto-promoted as `best-<predictor>-<run-slug>`.
 For judgment calls on the group (pin a confirmed champion, exclude a
@@ -142,11 +142,13 @@ the **dataset-design** skill.
    trains up to `--max-runs` concurrently (default 2) and queues the rest
    (`queued: waiting for a free training slot` in the run's events).
 3. **Collect.** Poll `GET /api/runs/<run_id>` (e.g. `sleep 30` between rounds)
-   until no run is `running`. On success `.metrics` holds
-   `{mae, rmse, r2, mape, medape, n_test}` — `mape`/`medape` are fractions,
-   render as %. Treat failures as data points: capture `.stderr_tail` and any
+   until no run is `running`. On success `.metrics` holds the task's metric
+   keys + `n_test` (regression: `{mae, rmse, r2, mape, medape}`, mape/medape as
+   fractions; classification: `{accuracy, logloss, auc, brier|macro_f1}`) —
+   render fraction metrics as %. Treat failures as data points: capture
+   `.stderr_tail` and any
    blowup pattern (they often become the most interesting finding).
-4. **Present & confirm.** Show the results table sorted by MAE plus draft
+4. **Present & confirm.** Show the results table sorted by AUC plus draft
    findings. Do not persist anything until the user approves.
 5. **Persist.** Save the winner as a definition (`POST /api/definitions`, or
    clone the baseline and PATCH) named per the convention
@@ -165,24 +167,24 @@ existing files:
 Goal: … (fixed baseline: dataset id, held hyperparams, reference champion
 with its metrics and run id)
 
-Outcome in one line: **<key finding> — <MAE / RMSE / R²> —
+Outcome in one line: **<key finding> — <AUC / logloss / accuracy> —
 definition `<name>`**
 
-## Results (sorted by MAE; all on <ds-id>)
-| config | MAE | RMSE | R² | run |
+## Results (sorted by AUC; all on <ds-id>)
+| config | AUC | logloss | accuracy | run |
 (bold the winner row and the best cell per metric; include failed runs)
 
 ## Findings
 (interpretation: why the winner wins, trade-offs, failure modes, saturation)
 
 ## Best on record after this work
-| model | MAE | RMSE | R² | run |   ← winner vs. previous champions
+| model | AUC | logloss | accuracy | run |   ← winner vs. previous champions
 
 ## Follow-ups
 - next experiments worth running
 ```
 
-Conventions: MAE in raw taste fit units with thousands
+Conventions: AUC in raw taste fit units with thousands
 separators; percentage metrics rendered as %; a run id in every table row;
 name the dataset id; reference prior experiments by filename when building
 on them.

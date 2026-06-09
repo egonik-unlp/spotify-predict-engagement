@@ -318,13 +318,14 @@
 .pf-src-toggle { display: flex; gap: 4px; margin: 2px 0 6px; }
 .pf-src {
   font-size: 11px; padding: 2px 10px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--border, #2a2c33); background: transparent; color: inherit;
+  border: 1px solid var(--hairline-strong); background: transparent; color: inherit;
   line-height: 1.6;
 }
-.pf-src.is-on { background: #1db954; border-color: #1db954; color: #06210f; font-weight: 600; }
+/* "source on" speaks the instance signal: green fill, dark ink (Live-or-Primary). */
+.pf-src.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .pf-menu-spot { display: flex; gap: 8px; align-items: center; text-align: left; }
 .pf-menu-spot:disabled { opacity: 0.45; cursor: not-allowed; }
 .pf-art { border-radius: 4px; object-fit: cover; flex: 0 0 auto; }
-.pf-art-blank { width: 34px; height: 34px; background: var(--border, #2a2c33); display: inline-block; }
+.pf-art-blank { width: 34px; height: 34px; background: var(--surface-sunken); display: inline-block; }
 .pf-spot-text { display: flex; flex-direction: column; min-width: 0; }
-.pf-inlib { color: #1db954; font-weight: 600; }
+.pf-inlib { color: var(--accent-text); font-weight: 600; }

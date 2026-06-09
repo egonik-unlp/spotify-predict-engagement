@@ -125,11 +125,11 @@ export default function SweepHeatmap({
     let hi = -Infinity
     for (const [k, group] of byPair) {
       const best = group.reduce((a, b) => {
-        const va = a.metrics![metric.key]
-        const vb = b.metrics![metric.key]
+        const va = a.metrics![metric.key] ?? (metric.lowerWins ? Infinity : -Infinity)
+        const vb = b.metrics![metric.key] ?? (metric.lowerWins ? Infinity : -Infinity)
         return (metric.lowerWins ? vb < va : vb > va) ? b : a
       })
-      const value = best.metrics![metric.key]
+      const value = best.metrics![metric.key] ?? NaN
       if (isFinite(value)) {
         lo = Math.min(lo, value)
         hi = Math.max(hi, value)

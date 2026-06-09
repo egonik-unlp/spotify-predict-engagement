@@ -37,6 +37,13 @@ pub fn spawn_sidecar(
     collection: &str,
     lensing_port: u16,
 ) -> Option<Child> {
+    // Opt out of the playlist-pathfinder sidecar (it loads the full taste graph
+    // into memory, ~several GB). Lets the server run lean for training-only /
+    // low-memory workloads; pathfinder routes then degrade to a clear 503.
+    if std::env::var("LENSING_DISABLE_PATHFINDER").is_ok_and(|v| v != "0" && !v.is_empty()) {
+        eprintln!("[lensing-server] pathfinder sidecar disabled (LENSING_DISABLE_PATHFINDER set)");
+        return None;
+    }
     let python = root.join("pathfinder/.venv/bin/python");
     if !python.exists() {
         eprintln!(

@@ -44,11 +44,11 @@ export default function BlendPanel({
     ? Math.min(
         ...file.members
           .filter((m) => m.included && m.solo_metrics)
-          .map((m) => m.solo_metrics!.mae),
+          .map((m) => m.solo_metrics!.mae!),
       )
     : Infinity
   const edge =
-    blendMetrics && Number.isFinite(bestSoloMae) ? bestSoloMae - blendMetrics.mae : null
+    blendMetrics && Number.isFinite(bestSoloMae) ? bestSoloMae - blendMetrics.mae! : null
 
   return (
     <div className="blend-panel">
@@ -96,9 +96,9 @@ export default function BlendPanel({
                       </span>
                     </td>
                     <td className="num-col num">{rec?.n_cols ?? '—'}</td>
-                    <td className="num-col num col-group-start">{sm ? fmtMoney(sm.mae) : '—'}</td>
-                    <td className="num-col num">{sm ? fmtPct(sm.medape) : '—'}</td>
-                    <td className="num-col num">{sm ? fmtR2(sm.r2) : '—'}</td>
+                    <td className="num-col num col-group-start">{sm ? fmtMoney(sm.mae!) : '—'}</td>
+                    <td className="num-col num">{sm ? fmtPct(sm.medape!) : '—'}</td>
+                    <td className="num-col num">{sm ? fmtR2(sm.r2!) : '—'}</td>
                   </tr>
                 )
               })}
@@ -111,9 +111,9 @@ export default function BlendPanel({
                   </td>
                   <td className="num-col num">{spec.rule === 'median' ? '' : '100%'}</td>
                   <td className="num-col num" />
-                  <td className="num-col num col-group-start">{fmtMoney(blendMetrics.mae)}</td>
-                  <td className="num-col num">{fmtPct(blendMetrics.medape)}</td>
-                  <td className="num-col num">{fmtR2(blendMetrics.r2)}</td>
+                  <td className="num-col num col-group-start">{fmtMoney(blendMetrics.mae!)}</td>
+                  <td className="num-col num">{fmtPct(blendMetrics.medape!)}</td>
+                  <td className="num-col num">{fmtR2(blendMetrics.r2!)}</td>
                 </tr>
               )}
             </tbody>

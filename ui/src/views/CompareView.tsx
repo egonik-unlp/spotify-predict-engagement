@@ -11,9 +11,11 @@ import ItemMeta from '../components/ItemMeta'
 import ViewHeader from '../components/ViewHeader'
 import { useAsync } from '../hooks/useAsync'
 import { useDomain } from '../lib/DomainContext'
+import type { Domain } from '../lib/domain'
 import { loadItems } from '../lib/itemsCache'
 import { itemLabel } from '../lib/itemDisplay'
-import { cap, fmtMoney, fmtPct, fmtR2, shortRunId } from '../lib/format'
+import { cap, fmtMoney, shortRunId } from '../lib/format'
+import { isTargetUnitMetric, lowerIsBetter, metricFormatter, metricKey, type MetricKey } from '../lib/metrics'
 import { scatterDomain, scatterIsLog } from '../lib/scale'
 import { suspiciousRowIds } from '../lib/suspicious'
 import './compare.css'
@@ -144,20 +146,29 @@ function SidePicker({
 /* ---------------- comparison body ---------------- */
 
 interface MetricRow {
-  key: keyof Metrics
+  key: MetricKey
   label: string
   /** true when lower values win */
   lowerWins: boolean
   fmt: (v: number) => string
+  /** Δ rendered in the target's own units (mae/rmse). */
+  targetUnit: boolean
 }
 
-const METRIC_ROWS: MetricRow[] = [
-  { key: 'mae', label: 'MAE', lowerWins: true, fmt: fmtMoney },
-  { key: 'rmse', label: 'RMSE', lowerWins: true, fmt: fmtMoney },
-  { key: 'r2', label: 'R²', lowerWins: false, fmt: fmtR2 },
-  { key: 'mape', label: 'MAPE', lowerWins: true, fmt: (v) => fmtPct(v, 0) },
-  { key: 'medape', label: 'medAPE', lowerWins: true, fmt: (v) => fmtPct(v) },
-]
+/** Metric rows built from the domain's display columns + the task-aware helper:
+ *  label, sort/read key, polarity and formatter all follow the run's task. */
+function metricRows(domain: Domain): MetricRow[] {
+  return domain.metrics.columns.map((col) => {
+    const key = metricKey(col)
+    return {
+      key,
+      label: col,
+      lowerWins: lowerIsBetter(key),
+      fmt: metricFormatter(col, domain),
+      targetUnit: isTargetUnitMetric(col, domain),
+    }
+  })
+}
 
 function Comparison({ a, b }: { a: RunMeta; b: RunMeta }) {
   const domainCfg = useDomain()
@@ -235,7 +246,7 @@ function Comparison({ a, b }: { a: RunMeta; b: RunMeta }) {
           </tr>
         </thead>
         <tbody>
-          {METRIC_ROWS.map((row) => (
+          {metricRows(domainCfg).map((row) => (
             <MetricRowEl key={row.key} row={row} ma={a.metrics!} mb={b.metrics!} />
           ))}
         </tbody>
@@ -303,15 +314,28 @@ function Comparison({ a, b }: { a: RunMeta; b: RunMeta }) {
 function MetricRowEl({ row, ma, mb }: { row: MetricRow; ma: Metrics; mb: Metrics }) {
   const va = ma[row.key]
   const vb = mb[row.key]
+  // A metric absent on one side (mixed-task comparison): show it blank.
+  if (va == null || vb == null) {
+    return (
+      <tr>
+        <td>{row.label}</td>
+        <td className="num-col num">{va != null ? row.fmt(va) : '—'}</td>
+        <td className="num-col num">{vb != null ? row.fmt(vb) : '—'}</td>
+        <td className="num-col num">—</td>
+      </tr>
+    )
+  }
   const delta = vb - va
   const bWins = row.lowerWins ? vb < va : vb > va
   const tie = va === vb
-  const deltaStr =
-    row.key === 'mae' || row.key === 'rmse'
-      ? `${delta < 0 ? '−' : '+'}${fmtMoney(Math.abs(delta))}`
-      : row.key === 'r2'
-        ? `${delta < 0 ? '−' : '+'}${Math.abs(delta).toFixed(3)}`
-        : `${delta < 0 ? '−' : '+'}${(Math.abs(delta) * 100).toFixed(1)}pp`
+  // Δ in the target's own units for target-unit metrics (mae/rmse); otherwise
+  // a percentage-point delta when the metric reads as a fraction, else the
+  // raw value difference.
+  const deltaStr = row.targetUnit
+    ? `${delta < 0 ? '−' : '+'}${fmtMoney(Math.abs(delta))}`
+    : row.key === 'r2'
+      ? `${delta < 0 ? '−' : '+'}${Math.abs(delta).toFixed(3)}`
+      : `${delta < 0 ? '−' : '+'}${(Math.abs(delta) * 100).toFixed(1)}pp`
   return (
     <tr>
       <td>{row.label}</td>
