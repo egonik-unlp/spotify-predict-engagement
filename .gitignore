@@ -17,3 +17,11 @@ docs/experiments.pdf
 docs/api.pdf
 dist/
 .zig-cache/
+
+# Vendored corpus-build pipeline: large metadata caches (regenerable via enrich),
+# working intermediates, the rebuilt master CSV, and the gensim venv.
+pipeline/corpus/cache/
+pipeline/corpus/out/
+pipeline/corpus/master_df.csv
+pipeline/corpus/.venv/
+pipeline/corpus/__pycache__/

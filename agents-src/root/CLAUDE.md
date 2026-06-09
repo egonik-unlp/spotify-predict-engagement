@@ -38,18 +38,22 @@ runs, promoted models and predictions behind a React UI.
   snapshots). NEVER write under `data/` by hand.
 - The Qdrant corpus (`{{collection}}` at `{{qdrant_url}}`) is external;
   manual entries live in `{{manual_collection}}`.
-- **Refreshing / injecting newer corpus data** — the corpus is built and
-  re-upserted by the external SpotifyData embedding pipeline (sibling checkout,
-  `SpotifyData/pipeline`; see its README → "Injecting newer data"). To inject a
-  newer Spotify account export: drop the fresh *Extended streaming history*
-  `endsong_*.json` into `SpotifyData/MyDataExtended/` and run
-  `python -m pipeline.run_all` there (`ingest` rebuilds `master_df.csv`,
-  `enrich` fetches only the new tracks/artists, the rest re-embeds and
-  re-upserts to `{{collection}}`). The `enrich` stage needs Spotify Web API
-  credentials in `SpotifyData/.env` (client-credentials flow), required only
-  when an export introduces tracks/artists not already cached. After a refresh
-  the corpus has changed, so datasets and models here are stale — rebuild a
-  dataset (`zig build dataset` / the dataset-design skill) and retrain.
+- **Refreshing / injecting newer corpus data** — the corpus-build pipeline is
+  vendored in-repo under `pipeline/corpus/` (ingest → enrich → clean →
+  sessionize → aggregates → embed → transitions → ids → upsert); the instance is
+  self-contained, no external checkout needed. To inject a newer Spotify account
+  export: replace the *Extended streaming history* export under `extended-2026/`
+  (both `endsong_*.json` and the newer `Streaming_History_Audio_*.json` shapes
+  are accepted), then run **`pipeline/refresh_corpus.sh`** — it rebuilds
+  `{{collection}}`, runs the AE chain (→ `spotify_tracks_content`,
+  `spotify_tracks_song_ae`), and POSTs the canonical Song-AE dataset recipe
+  (`pipeline/corpus/dataset_recipe.json`). `enrich` fetches only new
+  tracks/artists and needs Spotify Web API credentials in `.env`
+  (client-credentials flow). The corpus build runs in `pipeline/corpus/.venv`
+  (Python 3.12 — gensim; one-time `pipeline/corpus/setup_venv.sh`), kept separate
+  from `predictors/.venv` (3.14). The binary `rotation` target (`play_count >=
+  2`) is materialized by `aggregates` and rides the AE chain via payload copy.
+  After a refresh, datasets and models are stale — rebuild + retrain.
 
 ## Non-negotiables
 
