@@ -7,8 +7,9 @@ predictors/flux-mlp/Manifest.toml
 predictors/flux-cnn/Manifest.toml
 predictors/.venv/
 pathfinder/.venv/
-pathfinder/__pycache__/
-predictors/__pycache__/
+# Python bytecode caches at any depth (nested predictor/pipeline dirs included)
+__pycache__/
+*.pyc
 pathfinder/.spotify-token.json
 # Raw Spotify export data (instance data; rebuilt into the Qdrant corpus)
 extended-2026/
