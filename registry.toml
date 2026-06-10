@@ -741,6 +741,7 @@ description = "Gradient-boosted trees optimizing logistic / softmax loss for a b
 command = "predictors/.venv/bin/python"
 args = ["predictors/xgboost-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
 predict_args = ["predictors/xgboost-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+export_args = ["predictors/xgboost-classifier/train.py", "export", "--model", "{model}", "--output", "{output}"]
 supports_stop = false
 
 [[predictors.params]]

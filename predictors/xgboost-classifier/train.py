@@ -96,6 +96,34 @@ def predict(model_dir: Path, input_dir: Path, output: Path) -> None:
     clf.emit({"event": "done"})
 
 
+def export(model_dir: Path, output: Path) -> None:
+    """Contract export: convert the (binary) booster to a model.onnx whose
+    single `output` is P(class=1) — the positive-class (rotation) probability,
+    shape [N, 1] — matching the regression bundle contract. Trees are
+    scale-invariant, so the ONNX input is the assembled feature vector directly.
+    Multiclass is unsupported (an [N, k] output doesn't fit the [N, 1]
+    contract)."""
+    import onnx_common
+    from onnxmltools.convert import convert_xgboost
+    from onnxmltools.convert.common.data_types import FloatTensorType
+
+    model = xgb.XGBClassifier()
+    model.load_model(model_dir / "model.ubj")
+    k = int(model.n_classes_)
+    if k != 2:
+        raise SystemExit(
+            f"ONNX export supports binary classifiers only; this model has {k} classes")
+    n_cols = int(model.n_features_in_)
+    onx = convert_xgboost(
+        model, initial_types=[(onnx_common.INPUT, FloatTensorType([None, n_cols]))])
+    onx = onnx_common.positive_class_proba(onx)
+    onnx_common.save(onx, output)
+    clf.emit({"event": "log", "msg": f"exported model.onnx: xgboost-classifier "
+              f"{model.get_booster().num_boosted_rounds()} trees, {n_cols} features, "
+              f"binary P(class=1)"})
+    clf.emit({"event": "done"})
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -107,9 +135,14 @@ def main() -> None:
     pr.add_argument("--model", required=True, type=Path)
     pr.add_argument("--input", required=True, type=Path)
     pr.add_argument("--output", required=True, type=Path)
+    ex = sub.add_parser("export")
+    ex.add_argument("--model", required=True, type=Path)
+    ex.add_argument("--output", required=True, type=Path)
     args = ap.parse_args()
     if args.cmd == "train":
         train(args.dataset, args.output, args.hyperparams)
+    elif args.cmd == "export":
+        export(args.model, args.output)
     else:
         predict(args.model, args.input, args.output)
 

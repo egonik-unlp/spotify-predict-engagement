@@ -178,3 +178,40 @@ def finalize(model: onnx.ModelProto) -> onnx.ModelProto:
         g.output[0].name = target
     onnx.checker.check_model(model)
     return model
+
+
+def positive_class_proba(model: onnx.ModelProto) -> onnx.ModelProto:
+    """Reduce a converted *binary* classifier to the single-output `[N, 1]`
+    regression-style contract: `output` = P(class index 1), the positive-class
+    probability (for the rotation target, the engagement probability).
+
+    The skl2onnx / onnxmltools classifier converters emit two graph outputs — a
+    hard `label` and a `[N, k]` `probabilities` tensor. We gather the positive
+    column off the probabilities tensor into the canonical `output` and drop the
+    label, so the bundle stays a single `[N, 1]` output like every regressor
+    (consumers read `outputNames[0]`; `featurize.json` transform is `none`, and
+    the non-negative clamp is a no-op on a probability).
+
+    Multiclass is unsupported: an `[N, k>2]` output doesn't fit the `[N, 1]`
+    contract."""
+    g = model.graph
+    probs = [
+        o for o in g.output
+        if o.type.tensor_type.elem_type == TensorProto.FLOAT
+        and len(o.type.tensor_type.shape.dim) == 2
+    ]
+    assert len(probs) == 1, f"expected one [N, k] probabilities output, got {len(probs)}"
+    prob_name = probs[0].name
+    k = probs[0].type.tensor_type.shape.dim[1].dim_value
+    assert k == 2, f"ONNX export supports binary classifiers only (got {k} classes)"
+
+    g.initializer.append(numpy_helper.from_array(np.asarray([1], dtype=np.int64), "pos_class_idx"))
+    g.node.append(helper.make_node("Gather", [prob_name, "pos_class_idx"], [OUTPUT], axis=1))
+    del g.output[:]
+    g.output.append(helper.make_tensor_value_info(OUTPUT, TensorProto.FLOAT, ["N", 1]))
+    # Gather lives in the default ONNX domain; the ml converters only import
+    # ai.onnx.ml, so add a default-domain opset if one isn't already present.
+    if not any((op.domain or "") == "" for op in model.opset_import):
+        model.opset_import.append(helper.make_opsetid("", OPSET))
+    onnx.checker.check_model(model)
+    return model
