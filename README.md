@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo.svg" width="340" alt="Lensing — the framework bends around your data"></p>
+<p align="center"><img src="assets/logo.svg" width="760" alt="lensing: a prediction-lab framework that bends around your data, the way mass bends light"></p>
 
 # Lensing
 
@@ -22,7 +22,7 @@ every domain lever) lives at `crates/lensing-core/src/example-domain.toml`.
   (`crates/predictor-burn-cnn`), Python (`predictors/torch-cnn`, PyTorch)
   and Julia (`predictors/flux-cnn`); `predictors/ridge` (Python,
   scikit-learn); and `predictors/baseline-median` (Python, stdlib).
-- `ui/` is the Vite + React frontend ("The Measurement Bench", see DESIGN.md).
+- `ui/` is the Vite + React frontend ("The Control Room", see DESIGN.md).
 
 ## Quick start
 
@@ -212,6 +212,34 @@ params (without final test metrics).
   **target space** (invert the target transform, exactly as at train time),
   stream optional `{"event":"log",...}` lines plus a final
   `{"event":"done"}`, and exit 0 on success.
+
+### export (optional)
+
+```sh
+<command> export --model <model_dir> --output <out_dir>
+```
+
+Optional third subcommand (declare `export_args` in the registry; without it
+the family simply can't be exported and `GET /api/models/{name}/export`
+returns `422`). It converts the predictor's native trained model into a
+portable **`model.onnx`** written into `<out_dir>`, with a uniform I/O
+signature across every family:
+
+- input `input`: `float32[N, n_cols]` — the **assembled feature vector** (the
+  same matrix `predict` receives in `features.f32`),
+- output `output`: `float32[N, 1]` — the target in **transformed** space (the
+  inverse transform + non-negative clamp live in the export's `featurize.json`,
+  applied by the consumer, so the graph stays a uniform "raw predictor").
+
+Any preprocessing the native model applies to the feature vector (a
+standardizer, an output clamp) must be **baked into the graph** so the input
+stays the raw assembled vector regardless of family. Tree ensembles are
+scale-invariant and embed their trees directly. Meta-predictors (blend) instead
+write `members/<i>/model.onnx` (by recursively invoking each member's `export`)
+plus a `combination.json`. The server wraps whatever the predictor writes with
+the portable `featurize.json` spec, the PCA basis, an `input-schema.json` and a
+README into the export `.tar.gz` — see the `model-export` skill and
+`crates/lensing-onnx` (the dependency-free ONNX writer the Rust predictors use).
 
 ### Named models (`data/models/<name>/`)
 
