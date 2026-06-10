@@ -87,26 +87,37 @@ def load_graph() -> TrackGraph:
     return g
 
 
-def _build_knn(g: TrackGraph) -> None:
-    """Brute-force kNN over the learned subset (~3k x 200: trivial).
+def _build_knn(g: TrackGraph, block: int = 2048) -> None:
+    """Brute-force kNN over the learned subset.
 
     Edges are symmetrized (union of kNN relations): a directed kNN graph
     leaves low-in-degree tracks unreachable as path destinations.
+
+    Similarities are computed in row-blocks rather than as one m×m matrix: a
+    full m×m float32 buffer (plus the negated copy `np.argpartition` needs) is
+    ~2·m²·4 bytes, which OOMs once the corpus grows past ~15k tracks. Blocking
+    caps the transient at ~2·block·m·4 bytes regardless of m.
     """
     learned_rows = [g._row[pid] for pid in g.ids if pid in g.learned_ids]
     learned_pids = [g.ids[r] for r in learned_rows]
     sub = g.vectors[learned_rows]              # (m, dim), unit norm
-    sims = sub @ sub.T                         # (m, m)
-    np.fill_diagonal(sims, -np.inf)
-    top = np.argpartition(-sims, KNN_K, axis=1)[:, :KNN_K]
+    m = sub.shape[0]
+    k = min(KNN_K, m - 1)
 
     edges: dict[int, dict[int, float]] = {pid: {} for pid in learned_pids}
-    for i, pid in enumerate(learned_pids):
-        for j in top[i]:
-            other = learned_pids[j]
-            dist = float(1.0 - sims[i, j])
-            edges[pid][other] = dist
-            edges[other][pid] = dist
+    for b in range(0, m, block):
+        e = min(b + block, m)
+        sims = sub[b:e] @ sub.T                # (blk, m)
+        for r in range(e - b):
+            sims[r, b + r] = -np.inf           # exclude self (global row b+r)
+        top = np.argpartition(-sims, k, axis=1)[:, :k]
+        for r in range(e - b):
+            pid = learned_pids[b + r]
+            for j in top[r]:
+                other = learned_pids[j]
+                dist = float(1.0 - sims[r, j])
+                edges[pid][other] = dist
+                edges[other][pid] = dist
     for pid, nbrs in edges.items():
         g.neighbors[pid] = sorted(nbrs.items(), key=lambda t: t[1])
 
