@@ -1,13 +1,13 @@
 {
   "framework": "lensing",
   "version": "0.1.0",
-  "source_commit": "a47e0197a43b84c12f4aa44f041474048f767f40",
+  "source_commit": "55144e9d5aadd7cc6fb3828b41999930ce083344",
   "source_dirty": true,
   "source_repo": "git@github.com:egonik-unlp/lensing.git",
   "schema_version": 1,
   "files": {
     ".agents/skills/bootstrap/SKILL.md": {
-      "sha256": "0e2a8350de7e0f2e540ff50d493a9287b2fc30297db3b614e6cc41a65926edb1",
+      "sha256": "01e73ec78c05dfb62342ea737cdc377b8eade6700fab09b9e54732338ba6fc97",
       "kind": "rendered"
     },
     ".agents/skills/dataset-design/SKILL.md": {
@@ -355,7 +355,11 @@
       "kind": "rendered"
     },
     ".agents/skills/model-definitions/SKILL.md": {
-      "sha256": "a1c4d31a4bc9bc14d6993b89b55b48fd692a86f863c56ade47a2bdb0e36f1d35",
+      "sha256": "0f1496c66699b49b63ab4a283db89ec8391a81129eb66f11e8093e599c293d5b",
+      "kind": "rendered"
+    },
+    ".agents/skills/model-export/SKILL.md": {
+      "sha256": "121d2b9e73d4f7034d25cfda769050a1a0da5e4bf36a20a5156a4cb9764abe92",
       "kind": "rendered"
     },
     ".agents/skills/report-curator/SKILL.md": {
@@ -371,7 +375,7 @@
       "kind": "rendered"
     },
     ".claude/agents/best-model-selector.md": {
-      "sha256": "e48bb16bf2dce777e668020c4f928edb0a4ef4a6953589d01e33dcb85e70c66f",
+      "sha256": "9452c9daf8f2415a70512fc7daa2bd0c90fbb29e915cb1660c544ad3daf27a53",
       "kind": "rendered"
     },
     ".claude/agents/dataset-architect.md": {
@@ -379,11 +383,11 @@
       "kind": "rendered"
     },
     ".claude/agents/experiment-designer.md": {
-      "sha256": "0b03748f62d3f9402f21bc42bc7614fffb7fccb922a1d17e36177819327d0e7e",
+      "sha256": "6942d445fd2f4fc8fb3b23b6ad2254c71fed1a3dedfbb649f59f102c44588b5b",
       "kind": "rendered"
     },
     ".claude/agents/experiment-runner.md": {
-      "sha256": "39ff220e0e3e45beef62888bbaa895096e855bf4daed6b9d283a20b05b076d01",
+      "sha256": "c5e48201e9adaacf6916ab9092c18fdbcad6a131a86e19d7f8a2de6e78c38aa7",
       "kind": "rendered"
     },
     ".claude/agents/listing-generator.md": {
@@ -391,7 +395,7 @@
       "kind": "rendered"
     },
     ".claude/agents/report-curator.md": {
-      "sha256": "b1fbcc946d40b9e12eed9c5fd5cc371b4cfc5fa43e5f952e75d4540cf43e453d",
+      "sha256": "3aace7c0ac048a6753cba440c9f58f5e9d2f5c1f7643c9131d8652601298c24d",
       "kind": "rendered"
     },
     ".claude/agents/upstream-contribute.md": {
@@ -407,7 +411,7 @@
       "kind": "rendered"
     },
     ".claude/skills/bootstrap/SKILL.md": {
-      "sha256": "0e2a8350de7e0f2e540ff50d493a9287b2fc30297db3b614e6cc41a65926edb1",
+      "sha256": "01e73ec78c05dfb62342ea737cdc377b8eade6700fab09b9e54732338ba6fc97",
       "kind": "rendered"
     },
     ".claude/skills/dataset-design/SKILL.md": {
@@ -743,7 +747,11 @@
       "kind": "rendered"
     },
     ".claude/skills/model-definitions/SKILL.md": {
-      "sha256": "a1c4d31a4bc9bc14d6993b89b55b48fd692a86f863c56ade47a2bdb0e36f1d35",
+      "sha256": "0f1496c66699b49b63ab4a283db89ec8391a81129eb66f11e8093e599c293d5b",
+      "kind": "rendered"
+    },
+    ".claude/skills/model-export/SKILL.md": {
+      "sha256": "121d2b9e73d4f7034d25cfda769050a1a0da5e4bf36a20a5156a4cb9764abe92",
       "kind": "rendered"
     },
     ".claude/skills/report-curator/SKILL.md": {
@@ -759,7 +767,7 @@
       "kind": "rendered"
     },
     ".gemini/skills/bootstrap/SKILL.md": {
-      "sha256": "0e2a8350de7e0f2e540ff50d493a9287b2fc30297db3b614e6cc41a65926edb1",
+      "sha256": "01e73ec78c05dfb62342ea737cdc377b8eade6700fab09b9e54732338ba6fc97",
       "kind": "rendered"
     },
     ".gemini/skills/dataset-design/SKILL.md": {
@@ -1095,7 +1103,11 @@
       "kind": "rendered"
     },
     ".gemini/skills/model-definitions/SKILL.md": {
-      "sha256": "a1c4d31a4bc9bc14d6993b89b55b48fd692a86f863c56ade47a2bdb0e36f1d35",
+      "sha256": "0f1496c66699b49b63ab4a283db89ec8391a81129eb66f11e8093e599c293d5b",
+      "kind": "rendered"
+    },
+    ".gemini/skills/model-export/SKILL.md": {
+      "sha256": "121d2b9e73d4f7034d25cfda769050a1a0da5e4bf36a20a5156a4cb9764abe92",
       "kind": "rendered"
     },
     ".gemini/skills/report-curator/SKILL.md": {
@@ -1119,11 +1131,11 @@
       "kind": "framework"
     },
     "Cargo.lock": {
-      "sha256": "5325b5c846c5ad19aaae0d71cbc867be7821b8856785f896cb5827d642483c0a",
+      "sha256": "8d4447482df7d7b80d95f111abc4a77d5640f6c862c4443509163d437104a82e",
       "kind": "framework"
     },
     "Cargo.toml": {
-      "sha256": "b63090198df6acae74198d84b24db9d8da309cf20e27654638de814ff673d6e0",
+      "sha256": "cddac098bcc9cd1ce93585a743d9321c7810f1acc49a3935d3e84c61ed54ad1e",
       "kind": "framework"
     },
     "DESIGN.md": {
@@ -1131,7 +1143,7 @@
       "kind": "framework"
     },
     "README.md": {
-      "sha256": "0e64a9df5d3c7e5029bb48ae4bdbb5b0e3344efb34288070bc78db361112c7be",
+      "sha256": "1c5dda8bacdad65188524bf1fc76d38249ab0812be84d66853c46cbd95069290",
       "kind": "framework"
     },
     "VERSION": {
@@ -1147,7 +1159,7 @@
       "kind": "framework"
     },
     "agents-src/agents/best-model-selector.md": {
-      "sha256": "cb48a9f696fabfcc05d28bbb798d4a59f2a4ac160897fe17a94785bba4f72772",
+      "sha256": "5d01e609e941a53580f6eb65cd6c22958537997b68b086783d12bf2fca6fdc25",
       "kind": "framework"
     },
     "agents-src/agents/dataset-architect.md": {
@@ -1155,11 +1167,11 @@
       "kind": "framework"
     },
     "agents-src/agents/experiment-designer.md": {
-      "sha256": "d0ea015b67df0beba53b09f34015653307b5f72a3a12bdac141615b66b4bf99e",
+      "sha256": "dd4ba163d3f53d207f876f52accd249dc8370f09bff7c8bdff5cd0af8f7d4eff",
       "kind": "framework"
     },
     "agents-src/agents/experiment-runner.md": {
-      "sha256": "783c39f64cb7022dbf2f1358129a8917ec91bbc7f990be37aba96b29680dcc1a",
+      "sha256": "c1622322ddb4735b6110edf544be6616c5c4b906ec0359104e963a3156b6c03e",
       "kind": "framework"
     },
     "agents-src/agents/listing-generator.md": {
@@ -1167,7 +1179,7 @@
       "kind": "framework"
     },
     "agents-src/agents/report-curator.md": {
-      "sha256": "f79fc9483744505013453c01cfc546c30e42b24e45c490971547170763397ca6",
+      "sha256": "6e4117f847276ec254629503a75fc9243474b51997a71976e7b799c352990913",
       "kind": "framework"
     },
     "agents-src/agents/upstream-contribute.md": {
@@ -1187,7 +1199,7 @@
       "kind": "framework"
     },
     "agents-src/skills/bootstrap/SKILL.md": {
-      "sha256": "713433f74bab54a106aa84569c043b8eb3ccdffb081e7fed5d69443a92d4167e",
+      "sha256": "3c8d7397382e9eb3ecf6a789b9094f367ef0371f361bece8c67b7b391d3be117",
       "kind": "framework"
     },
     "agents-src/skills/dataset-design/SKILL.md": {
@@ -1195,7 +1207,11 @@
       "kind": "framework"
     },
     "agents-src/skills/model-definitions/SKILL.md": {
-      "sha256": "8143a1846db53c1ffee78d7027a4ac75a7c289c788e5ff24b57f70b77b19b15d",
+      "sha256": "25df9c63a3343e6776ea63bb22bb38cfdf2c197aa01570465c919c3122bbb624",
+      "kind": "framework"
+    },
+    "agents-src/skills/model-export/SKILL.md": {
+      "sha256": "ab94e29b43997e78f11ef873ec52abbd862baf2a9ee4252a2e9b0a2ac8c5b1d4",
       "kind": "framework"
     },
     "agents-src/skills/report-curator/SKILL.md": {
@@ -1243,7 +1259,7 @@
       "kind": "framework"
     },
     "crates/lensing-core/src/domain.rs": {
-      "sha256": "57b94d89bc4265edd8c4b2bc9c6a3263d366d87556b07bb03373b6ec68777e83",
+      "sha256": "e54fd9e7056ae824fcaa0dafc2cff8d1ed37f87c7fa703e68d7621eacb32fd1a",
       "kind": "framework"
     },
     "crates/lensing-core/src/example-domain.toml": {
@@ -1255,7 +1271,7 @@
       "kind": "framework"
     },
     "crates/lensing-core/src/manifest.rs": {
-      "sha256": "eba28e53b8f3d784f18093b09509ba1a23e163c2f618d0c85b272cc1a6ebf853",
+      "sha256": "7533d247fa5289bf4db70d2c3ceafc80cab07202e0e1c418247f6db8acb192a2",
       "kind": "framework"
     },
     "crates/lensing-core/src/model.rs": {
@@ -1275,11 +1291,11 @@
       "kind": "framework"
     },
     "crates/lensing-core/src/registry.rs": {
-      "sha256": "c6a707c9f1ecc917353ce4d1dfcd736c9b7621db3818e35be636e59ba5a13ef1",
+      "sha256": "ccae92192f9c21c3555d35b503c53e54dfb4a8c861937c08d2990aa3a1670a6a",
       "kind": "framework"
     },
     "crates/lensing-core/src/run.rs": {
-      "sha256": "a2c2253ee600783484c795a1b6a9f6ee70706a76f590faf7248f36501cc75be9",
+      "sha256": "ec03349d4deeb7bb6147fb9a32e6978ed8999e900e71f04c1744d31bc0f8db74",
       "kind": "framework"
     },
     "crates/lensing-core/src/shuffle.rs": {
@@ -1310,12 +1326,24 @@
       "sha256": "c77b12e28574bf0000c4a8c3c32844d94a2f75b196a085ba600c67c17b793c03",
       "kind": "framework"
     },
+    "crates/lensing-onnx/Cargo.toml": {
+      "sha256": "7ea34bff3978a0de8f3cd23dce65cd1ea913d594eb6e64f7bd7f95b9b58dd514",
+      "kind": "framework"
+    },
+    "crates/lensing-onnx/examples/dump.rs": {
+      "sha256": "849696fc5cde0be7dc715a237ac58a035c74e3d57bdbd3a22529e74c9fffa20c",
+      "kind": "framework"
+    },
+    "crates/lensing-onnx/src/lib.rs": {
+      "sha256": "b0462a82d50b8d992e58b00c7669a05d2ab803325e70a6e50512c30ad1065332",
+      "kind": "framework"
+    },
     "crates/lensing-pipeline/Cargo.toml": {
       "sha256": "b51627aabd5e915c040f3acf3f655f374c242bb2609c58efbee32b32893c7db7",
       "kind": "framework"
     },
     "crates/lensing-pipeline/src/build.rs": {
-      "sha256": "989f2b9a7702cfd1227fa7aba28edaacd9782011cd077382a0037bf5fe2c236d",
+      "sha256": "bae23bc960ed13c86da882e0f06bd72e5577c0098a2d93e63a05b12b40e36cda",
       "kind": "framework"
     },
     "crates/lensing-pipeline/src/currency.rs": {
@@ -1323,11 +1351,11 @@
       "kind": "framework"
     },
     "crates/lensing-pipeline/src/features.rs": {
-      "sha256": "0e3544e90a5fd9096a71eb46bb0a83783b808904d3bebf9431137684e5b9ecdc",
+      "sha256": "f47e485535e6de458fcae9338a8fbf787f84556e1ca93a392e3e31d71e77b150",
       "kind": "framework"
     },
     "crates/lensing-pipeline/src/inference.rs": {
-      "sha256": "36e644d138c98eda5eccb8e5518d72716dcdac4c6ac20c21826194b67dc4d0d0",
+      "sha256": "88216d5fd07e1263ab901916f78656433e1fe3cfa86ba8fd9bcf40651b3131b7",
       "kind": "framework"
     },
     "crates/lensing-pipeline/src/lib.rs": {
@@ -1367,11 +1395,11 @@
       "kind": "framework"
     },
     "crates/lensing-server/src/api.rs": {
-      "sha256": "adb12c9e2bcfd692b22655a8715fba6eb502ccef4a6fb449de5166758290a1b8",
+      "sha256": "5d1ad5e97b57ee873b1b2ec55f1738b4543aa92ecc4bb699e23092900b12f639",
       "kind": "framework"
     },
     "crates/lensing-server/src/best_models.rs": {
-      "sha256": "1b7a4c860d4c79b54ff2f65527e4fe947109176d131d4db7b545a931ad3e3ab8",
+      "sha256": "28710a39bea9403d059e68c726f03740303540f74f756b7e2e2b5c3afdc11549",
       "kind": "framework"
     },
     "crates/lensing-server/src/definitions.rs": {
@@ -1383,11 +1411,11 @@
       "kind": "framework"
     },
     "crates/lensing-server/src/main.rs": {
-      "sha256": "df3cf22a9039268447b1c8e03fcf798b3237be715e49d860b6b7a4574b073d74",
+      "sha256": "5ae95e1150ced407a687cc43995801846663d2f97d0e3c2b2fc8582e42102880",
       "kind": "framework"
     },
     "crates/lensing-server/src/models.rs": {
-      "sha256": "77ad7bb6093718acca90e1a590364b07583ede02e1f89f4b674416ca27064dea",
+      "sha256": "2218ff8090670833d96e09b86259a1d86008cab85fec25b4b73ed0844f6c9fb3",
       "kind": "framework"
     },
     "crates/lensing-server/src/registry.rs": {
@@ -1411,7 +1439,7 @@
       "kind": "framework"
     },
     "crates/predictor-blend/src/child.rs": {
-      "sha256": "3d4630bac6c061a600d7d3e2b5ed7b7fe5cc563e13f2b5f299ed4d60931182a2",
+      "sha256": "8b14a321012ca844e0f6dfe6a6c17139bdb425027697f17875d7094afed70387",
       "kind": "framework"
     },
     "crates/predictor-blend/src/columns.rs": {
@@ -1419,11 +1447,11 @@
       "kind": "framework"
     },
     "crates/predictor-blend/src/combine.rs": {
-      "sha256": "572aefa86010b6e17dd2ed83e214b30fb5177c3f4c57d8285fd83541b523f3c2",
+      "sha256": "00d1df2b653be4a7c08c9f72bf97c3ab26c05a4008fef64c1c9e93d9231881ea",
       "kind": "framework"
     },
     "crates/predictor-blend/src/main.rs": {
-      "sha256": "28ddbe4df3c46ebc404fa08b7fb6e51b5e9f766bc8ebb09229876d90c60097da",
+      "sha256": "89bcda0680cae1258d6318d202e8af3b7764177760ac0cc46c44245e4444bde1",
       "kind": "framework"
     },
     "crates/predictor-blend/src/spec.rs": {
@@ -1435,15 +1463,19 @@
       "kind": "framework"
     },
     "crates/predictor-burn-cnn/Cargo.toml": {
-      "sha256": "ad3a2fe4818fbea25eaa224a3fba1530047f4f1f019ae0c6ca1a0cef40befe66",
+      "sha256": "dee428a5991e191a5068f454c1d2ae0f7d6a85b654ed64a86666cc393ea8967f",
       "kind": "framework"
     },
     "crates/predictor-burn-cnn/src/main.rs": {
-      "sha256": "96ecaedc93c9868d36662e53378f203dcc75c5cfa83a43ac7719d52b91261524",
+      "sha256": "ff020a1ef53a607f66549bdd2236a0ac6d36bc09d7eec524e7bf1e87937b26ec",
       "kind": "framework"
     },
     "crates/predictor-burn-cnn/src/model.rs": {
-      "sha256": "975edf35a1b33344a2d367a6cd8d3546de061c1823d02db10b13196419ab8350",
+      "sha256": "7c8a6797293167dc40735e9f240c086ba37fc0d53233a3434d3e031862532d92",
+      "kind": "framework"
+    },
+    "crates/predictor-burn-cnn/src/onnx_export.rs": {
+      "sha256": "bda5a9f797f35a1ab194187c79b23473e7a19e688a977885124fe4184c7c3c53",
       "kind": "framework"
     },
     "crates/predictor-burn-cnn/src/scaler.rs": {
@@ -1455,15 +1487,19 @@
       "kind": "framework"
     },
     "crates/predictor-burn-mlp/Cargo.toml": {
-      "sha256": "2271192d37ec536deb4ddeacd68a5e0dc3946abcd1c69f94c653f95288b95dac",
+      "sha256": "a4e6fc26f9c37a9868a3b441642346c9865a2bfd576307d131510e8c23c0a3dd",
       "kind": "framework"
     },
     "crates/predictor-burn-mlp/src/main.rs": {
-      "sha256": "018a7a9d2a62475e6c65037a23ede40d6c560800ee200aa87b867849ea6920ea",
+      "sha256": "e1fb884bbcb500af4b7178e1496d0026b8df1576cee06e76fd4deca5716f6aa9",
       "kind": "framework"
     },
     "crates/predictor-burn-mlp/src/model.rs": {
-      "sha256": "6237334dabba864d219cbc6303a156487b47f4886962e3ba8bdf78537b669a69",
+      "sha256": "3746858899f89b7910fd56e9aab4cb9256c876a605a2bc4befb62585763fdd7f",
+      "kind": "framework"
+    },
+    "crates/predictor-burn-mlp/src/onnx_export.rs": {
+      "sha256": "708b9cc83de79c9356ecaa451d751336a487ae9e03e8c90600301a8e82fc2a4c",
       "kind": "framework"
     },
     "crates/predictor-burn-mlp/src/scaler.rs": {
@@ -1487,11 +1523,15 @@
       "kind": "framework"
     },
     "docs/openapi.yaml": {
-      "sha256": "4c2904d7c2c7526003ecafa3b14d9c6a81f514ef81117f09e40937187d253974",
+      "sha256": "6052b5637b639412075c71a1c0338f4b27f6aff987c664ae6a0d452f42e812e0",
       "kind": "framework"
     },
     "domain.toml": {
       "sha256": "f98dd7ac079332f35dc59d8cb8c865aafbce7c0dee735a6248567f743fa84882",
+      "kind": "framework"
+    },
+    "predictors/_clf_common.py": {
+      "sha256": "cd03793be43d5818fe1cde55cd717a182c020f96ffbc930c7a127c1552c911e5",
       "kind": "framework"
     },
     "predictors/baseline-median/predict.py": {
@@ -1515,27 +1555,39 @@
       "kind": "framework"
     },
     "predictors/kernel-ridge/train.py": {
-      "sha256": "f43a08ea64b4b5b6b01c82988abcb95bed2b2b6cc79020a1d4fed6d727de0012",
+      "sha256": "bae4effad645f5c5df91bbb6882e90a3e981f937f6fcb945171db33b59aeea0f",
       "kind": "framework"
     },
     "predictors/lightgbm/train.py": {
-      "sha256": "bc69c885bfc36b3aa8d096b7a9ac24c5c6949838ec557d32de7c1e1907ad06b6",
+      "sha256": "21e10cc5eefd47d2873bb8489c2636b001067f808025ab5df4d5d32276bf364d",
+      "kind": "framework"
+    },
+    "predictors/logistic/train.py": {
+      "sha256": "093419a090507684b89b1055c00bc7764d16ae306592d55051b3dee924a5159a",
+      "kind": "framework"
+    },
+    "predictors/onnx_common.py": {
+      "sha256": "2080cfbd2e0a5ea6aa8066b9c6e5474d06455b8e257d04884b7d0bfd605232ca",
       "kind": "framework"
     },
     "predictors/random-forest/train.py": {
-      "sha256": "e8c0b14a40357d54ed8d3cb0b3067ee96227a4d7e1bc4e5cadae759da7c10fa6",
+      "sha256": "bc5db377a4626f32a31597b208457073654f96ff0f212923624c59be998b226a",
       "kind": "framework"
     },
     "predictors/requirements.txt": {
-      "sha256": "59d44db8ff6c855dc09b01f9f12cb0fb45b0b4c971e6bda0a3389af9b191b47b",
+      "sha256": "3c3a8577b978a9a5df0b7ab4c4af8743d069ff4532f48eaaa65d8a983bdecc5f",
       "kind": "framework"
     },
     "predictors/ridge/ridge.py": {
-      "sha256": "4bd71a8942c38dfa1ac074f7de9a1579508fef1a43bd5d8ff4430a69f594e6e9",
+      "sha256": "0068d7bd69eec00033ca27045537667830b15753bd842cee70fd90d1774a0c48",
+      "kind": "framework"
+    },
+    "predictors/svc/train.py": {
+      "sha256": "f8cfb1b64a96daf752cf5897fe9ea11b73ef22e970fd0198e10b7e9a07490d7a",
       "kind": "framework"
     },
     "predictors/svm/train.py": {
-      "sha256": "38198ad894e5b102972b89a6b909316d2c61d8057586c143a22491049fd87dfa",
+      "sha256": "1aaff8644de3529855d7735d4025bbf4e232b75274191b6f21ef9e4c18d849b2",
       "kind": "framework"
     },
     "predictors/svm-moe/train.py": {
@@ -1547,15 +1599,19 @@
       "kind": "framework"
     },
     "predictors/torch-cnn/train.py": {
-      "sha256": "e37c2b171ed2e3b3355270e06c749dc6de75aca535b5c2ac3d28f40f9c732ae8",
+      "sha256": "548145c0089176773ef5cf5558e5e6c7cdd8f847d8802674d4cdb983420ccac6",
       "kind": "framework"
     },
     "predictors/xgboost/train.py": {
-      "sha256": "5f07b7ec32b805f93596d9ced36d86f3b33be6d1b8eedfc361f8b5431a7e2eb2",
+      "sha256": "23b698e5332b565516ee366bcfc1e98e9791da9db10fb42d8aa09d3a5572d2fd",
+      "kind": "framework"
+    },
+    "predictors/xgboost-classifier/train.py": {
+      "sha256": "46e3d6cad24fa54260b1446dff161cd213372966ac0ec093d4ec1bafe03a1221",
       "kind": "framework"
     },
     "registry.toml": {
-      "sha256": "991a4799ffd035360abba0469d6b313c22d84b6f573a97c7b3df843d7d47dbf4",
+      "sha256": "d74768ed9ba448eeab8c766b233d279e2e20eaff83cadd7696fbc811ecf78d36",
       "kind": "framework"
     },
     "tools/package.py": {
@@ -1603,7 +1659,7 @@
       "kind": "framework"
     },
     "ui/src/api/client.ts": {
-      "sha256": "9ecbfc6c1c205a7b46f864717524c4c8fef573498814f4c30ea110f2d2c1c7d9",
+      "sha256": "c385ee6d7ce502c1860fa7fd814b1e9063fb589e1c8c1a5d43aa817f4dbc1da0",
       "kind": "framework"
     },
     "ui/src/api/types.ts": {
@@ -1619,19 +1675,19 @@
       "kind": "framework"
     },
     "ui/src/components/ArchViz.tsx": {
-      "sha256": "ee97cde5f25d67074db15d29620355d7b80b2b4b298d7daf685c231f5cc039de",
+      "sha256": "cddd5d2369b5209361c62a1eac78c28b06e71e0d4368b213cd5f5ca2152a2e45",
       "kind": "framework"
     },
     "ui/src/components/BestModelsPanel.tsx": {
-      "sha256": "3964591f3ca050363c52439b15742da46d22102d78ffcceed941581b714c9c0c",
+      "sha256": "8fd1c4f712d2277fd97488ca5a2cca5972d8df9b0db881ff5b658ddc7b0691a6",
       "kind": "framework"
     },
     "ui/src/components/BlendPanel.tsx": {
-      "sha256": "f42dff2b1411b33ded9419cc386d4e91b21c7ba6112fcb031d70101feebdf31e",
+      "sha256": "b84967977c453bf9a59f6eaab2e7f62a49dffa4a08be77710b3ae3c3ab23f438",
       "kind": "framework"
     },
     "ui/src/components/DatasetBuildForm.tsx": {
-      "sha256": "a670e0e90375d111972eff8394b4f7872196043400c2b85cb46bc664ef084caa",
+      "sha256": "04cb252dd3720094b5dc59f7243cd020e360946012718fb8daa2b423997ae095",
       "kind": "framework"
     },
     "ui/src/components/DensityToggle.tsx": {
@@ -1679,7 +1735,7 @@
       "kind": "framework"
     },
     "ui/src/components/SweepHeatmap.tsx": {
-      "sha256": "9dbf97fb0a04f78db473e77a449dd56e805fd0e139d74e7a2fe1b8d6b3313559",
+      "sha256": "3d204c27c47ae304803469055d6a20994c947dc72e553403cd869d89a17c9cac",
       "kind": "framework"
     },
     "ui/src/components/ViewHeader.tsx": {
@@ -1699,7 +1755,7 @@
       "kind": "framework"
     },
     "ui/src/components/charts/CategoryBars.tsx": {
-      "sha256": "69740873848ffac66b1b84575d93b4daf4dc00b825b6d3c5189bb693c04568c1",
+      "sha256": "24f4ca74680605cb77395e2f25a347976ad9b3b7d1446249a8973565fe0824ca",
       "kind": "framework"
     },
     "ui/src/components/charts/ErrorHistogram.tsx": {
@@ -1723,7 +1779,7 @@
       "kind": "framework"
     },
     "ui/src/components/charts/ScatterChart.tsx": {
-      "sha256": "185d574f48c8b98c0a7e3415537873cfda775b35b0162a6a5e976632063a0ad5",
+      "sha256": "07b0f8c6c1e1739279d5168eca835f39bdf59c92032f4894d3f4b3d36c749e64",
       "kind": "framework"
     },
     "ui/src/components/charts/VarianceChart.tsx": {
@@ -1779,7 +1835,7 @@
       "kind": "framework"
     },
     "ui/src/lib/format.ts": {
-      "sha256": "057575b871ef353708ea2bbb8e159b0d086ce0b1b7d76159b86e201449b6c549",
+      "sha256": "e58072fcb9067d032919ef39d527868f6f5bcb1f8f7e650590b0e92e65a7a166",
       "kind": "framework"
     },
     "ui/src/lib/heat.ts": {
@@ -1803,7 +1859,7 @@
       "kind": "framework"
     },
     "ui/src/lib/scale.ts": {
-      "sha256": "96e7809677347ec322c8da9a87bca1ee2cd6310ff02bd058c6578f748f79ad9f",
+      "sha256": "eec272e1ab51dc5ff7b9a951186c3512615d3628d6bc3d7a6d3ddfe80be0bf79",
       "kind": "framework"
     },
     "ui/src/lib/scrollToError.ts": {
@@ -1831,11 +1887,11 @@
       "kind": "framework"
     },
     "ui/src/views/CompareView.tsx": {
-      "sha256": "287edc062c422275cdda32196bad84c8007b35bf6f080aa1737b990db51c4570",
+      "sha256": "775fecb38f8f2361a96ad7d13f32aef301b7485f9622a0744f02a7f992d27507",
       "kind": "framework"
     },
     "ui/src/views/DatasetDetailView.tsx": {
-      "sha256": "e219b637f559567d20aa2d5d46617f3dcd757c15b7862792d4da45614d86125d",
+      "sha256": "63a471018b9f7b8e98717aecca47398036ba64b935753956e5a3d32478eb2fca",
       "kind": "framework"
     },
     "ui/src/views/DatasetsView.tsx": {
@@ -1851,15 +1907,15 @@
       "kind": "framework"
     },
     "ui/src/views/ListingDetailView.tsx": {
-      "sha256": "47691bfb16bded72159690d2e1bc94c9ea620bd8e2936a5f98859ead6d4590b4",
+      "sha256": "36037d2da1a45477815943c282b1f61c57bf14ca52fb0dadfd1654dac04f624d",
       "kind": "framework"
     },
     "ui/src/views/ListingsView.tsx": {
-      "sha256": "4ba53a40de36c5139d7df3b47d233877cd9bc8e1af020c7d40ad61ab1263847a",
+      "sha256": "58af75182758437abd0c10f512304ecd99715314bb9dcf4a281f3cc8d7a50b6b",
       "kind": "framework"
     },
     "ui/src/views/ModelDetailView.tsx": {
-      "sha256": "62ece4d23248895018d30cabd4ed6d119a793e76b806d599fb32e4e83f3f5c76",
+      "sha256": "e8d63dc8e6efac1de19c4bbac3927e2ffda7754d8ed68ad48e22eb5ede1d30b7",
       "kind": "framework"
     },
     "ui/src/views/ModelsView.tsx": {
@@ -1879,15 +1935,15 @@
       "kind": "framework"
     },
     "ui/src/views/PredictorDetailView.tsx": {
-      "sha256": "d593d32991ddaa634cd8e0efba4ecb72819362f5a2606c1f1609a0c5bf2b3f3c",
+      "sha256": "b9750a7759de3b27220d47b74e4e7f3c39de4d76823f5814ea90bc091f4d22e1",
       "kind": "framework"
     },
     "ui/src/views/RunDetailView.tsx": {
-      "sha256": "a4219048656cc42e638e83ecda4ccf473f56fd9a73f19767f7afae94e05530ea",
+      "sha256": "73ceefe4815d8ef9db3f70ff4d1364efd3f4f3d36b3c9e18edf8899ed1c7f2f8",
       "kind": "framework"
     },
     "ui/src/views/RunsView.tsx": {
-      "sha256": "920304995a63e9319ef6acd3ddc33301d3b93aad1b47ee620b182c2bc605edc1",
+      "sha256": "d4f3953ed01db3a45d990996be054664f0773628a907e92606bb8b8696ac3620",
       "kind": "framework"
     },
     "ui/src/views/compare.css": {
