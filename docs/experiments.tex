@@ -21,16 +21,23 @@
 \maketitle
 
 \begin{abstract}
-This document is the living synthesis of the engagement-from-metadata
-prediction campaigns; the markdown reports in \texttt{experiments/} are the
-primary record. The target is per-track \emph{engagement}
-($\text{play\_count}\times\text{completion\_ratio}$, $\log1p$-transformed),
-predicted from a track's \emph{intrinsic metadata} alone --- genre, artist,
-artist/track popularity, follower count, release year, release type --- over
-the user's \num{12256}-track listening corpus. The behavioral co-listening
+This document is the living synthesis of the taste-fit prediction campaigns;
+the markdown reports in \texttt{experiments/} are the primary record. The
+active target is a binary \emph{rotation} signal --- did a track earn a repeat
+listen, $\text{play\_count}\ge 2$ --- predicted from a track's \emph{intrinsic
+metadata} alone (genre, artist, artist/track popularity, follower count,
+release year, release type) over the user's listening corpus. The headline
+metric is the area under the ROC curve (AUC); the engagement-magnitude
+regression target that the lab opened on ($\text{play\_count}\times
+\text{completion\_ratio}$, $\log1p$-transformed) is retained as a documented
+scientific field but is no longer delivered. The behavioral co-listening
 embedding and all playback/curation fields are deliberately excluded from the
-feature set. No campaigns have run yet; this synthesis is seeded empty and
-each campaign appends a section as it lands.
+feature set. Three Jun-2026 campaigns are folded in below; they converge on a
+single finding --- categorical artist/genre/album identity read by
+gradient-boosted trees beats every dense modality and every dense
+distance/margin family --- and they crowned the project's first registered,
+promotable champion, \texttt{xgboost-classifier-rotation}, at AUC
+\num{0.7429}.
 \end{abstract}
 
 \section{Introduction}
@@ -40,78 +47,428 @@ transcribes (never recomputes) the quantitative results of a campaign,
 preserves its run and dataset identifiers verbatim for traceability, and adds
 the rationale and interpretation that the terse reports omit.
 
-\paragraph{Task and target.} The lab predicts a per-track \emph{engagement}
-score, defined as $\text{play\_count}\times\text{completion\_ratio}$, from a
-track's intrinsic metadata over the user's listening corpus. Because
-engagement is heavy-tailed and
-non-negative, models are trained against the $\log1p$-transformed target and
-predictions are mapped back with $\text{expm1}$. This compresses the long tail
-into a regime where squared-error losses behave, but it carries a hazard: a
-model that is unbounded in log-space can produce a large positive log
-prediction that $\text{expm1}$ amplifies into an enormous engagement value (the
-``$\text{expm1}$ blow-up''). Bounded-by-construction families are immune;
-unbounded ones are not (see Section~\ref{sec:background}).
+\paragraph{Task and target.} The lab predicts \emph{taste fit} from a track's
+intrinsic metadata over the user's listening corpus. It opened on an
+engagement-magnitude regression target ---
+$\text{play\_count}\times\text{completion\_ratio}$, trained against a
+$\log1p$-transform and mapped back with $\text{expm1}$ --- but on 2026-06-08
+the active target pivoted to a binary \emph{rotation} signal:
+$\text{play\_count}\ge 2$, i.e.\ did the track earn a repeat listen
+(Section~\ref{sec:rotation-pivot}). Rotation is the actionable input to the
+Playlist Pathfinder's per-track desirability term, it is far more learnable
+than engagement magnitude (trees reach $\text{AUC}\approx 0.73$ on rotation
+versus \rsq{}$\approx 0.3$ on engagement), and with a base rate near
+\SI{44.5}{\percent} it is naturally spread for path search. Engagement is
+retained as a documented scientific field, but rotation is the delivered
+target and every leaderboard below is on it.
 
-\paragraph{Metrics.} The headline metric is the mean absolute error (MAE) in
-raw engagement units, reported alongside RMSE and the coefficient of
-determination \rsq{}. MAE is robust to the tail and is the quantity the
-leaderboard sorts on; RMSE exposes tail misses; \rsq{} measures variance
-explained relative to the median baseline. Absolute-percentage error
-(\medape{}) is used where a scale-free view helps. Throughout, MAE is in raw
-engagement units with thousands separators where large.
+\paragraph{Metrics.} Because the target is binary, the headline metric is the
+area under the ROC curve (AUC, higher-better), the quantity the
+classification leaderboard (Table~\ref{tab:lb-auc}) sorts on and the
+best-models group auto-promotes by; it is reported alongside log-loss,
+accuracy and the Brier score. Two distinct metric regimes nonetheless coexist
+in the rotation campaigns. The campaigns opened with a \emph{regression} read
+--- mean absolute error (MAE), RMSE and \rsq{} on the $[0,1]$ P(rotation)
+scale --- and only later adopted the honest \emph{classification} read once
+the framework gained a binary mode. MAE is retained on the historical
+regression board (Table~\ref{tab:lb-mae}) for same-family band significance,
+but it is documented there as \emph{degenerate} on a binary target: an
+$\epsilon$-tube SVR can post a deceptively low MAE while being worse than
+predicting the mean (Section~\ref{sec:svm}), an illusion the classification
+metrics dissolve. The absolute-percentage metrics (MAPE/\medape{}) are
+undefined on rotation, since half the labels are exactly zero. The historical
+engagement board, where MAE \emph{is} the natural headline, is preserved in
+\texttt{PROJECT-FACTS.md}; its numbers live on the $\log1p$ engagement scale
+and are not comparable to anything below.
 
 \paragraph{Features.} The feature space is a track's \emph{intrinsic metadata}
 alone: genre, artist, artist/track popularity, follower count, release year,
-credited-artist count and release type. The 200-dimension co-listening
-word2vec embedding is a \emph{behavioral} signal, not metadata, and is left
-out of the feature set entirely --- the payload-based predictors are the
-canonical models here. Critically, the recipe is \emph{leakage-free}: the
-playback fields that mechanically constitute or proxy the target ---
-\texttt{play\_count}, \texttt{completion\_ratio}, \texttt{skip\_rate},
-\texttt{shuffle\_rate}, \texttt{distinct\_sessions} --- and the behaviorally
+credited-artist count and release type. The dense embedding modalities
+(co-listening word2vec, content-text, acoustic, and the song-autoencoder
+latent of Section~\ref{sec:ae-blend}) are \emph{behavioral or descriptive}
+signals, not categorical identity, and the payload-based predictors over the
+metadata one-hots are the canonical models here. Critically, the recipe is
+\emph{leakage-free}: the playback fields that mechanically constitute or proxy
+the target --- \texttt{play\_count}, \texttt{completion\_ratio},
+\texttt{skip\_rate}, \texttt{shuffle\_rate}, \texttt{distinct\_sessions}, and
+the demoted \texttt{engagement} field itself --- and the behaviorally
 entangled curation fields are all excluded by default.
 
-\section{Background: model families and the log-target}
+\section{Background: model families and metrics}
 \label{sec:background}
-This section gives the minimum theory for a reader who knows regression but
-not this repo. It is keyed to \texttt{PROJECT-FACTS.md} and grows only when a
-new predictor family enters the reports. No campaigns have run yet; the
-families below are the expected opening contenders.
+This section gives the minimum theory for a reader who knows ML but not this
+repo. It is keyed to \texttt{PROJECT-FACTS.md} and grows only when a new
+predictor family or metric enters the reports.
 
+\paragraph{The families in play.}
 \begin{description}
-  \item[Gradient-boosted trees (xgboost).] An additive ensemble of shallow
-  regression trees, each fit to the residual gradient of the previous stage.
-  Predictions are leaf averages, so the output is bounded by the range of
-  training targets: the model \emph{cannot} blow up through the $\text{expm1}$
-  inverse. Trees capture non-linear interactions among PCA components without
-  manual feature crosses, which suits a dense embedded feature space; the cost
-  is a non-deterministic fit (subsampling and column sampling carry an internal
-  RNG seed), so two runs at different seeds differ slightly.
-  \item[Ridge regression.] Ordinary least squares with an $\ell_2$ penalty on
-  the coefficients (here with automatic $\alpha$ selection). It is a linear
-  model, so it is fully deterministic given the data --- the closed-form
-  solution has no RNG --- and run-to-run variance is exactly zero. Being
-  linear and unbounded in log-space, it is in principle capable of an
-  $\text{expm1}$ blow-up, but with the $\ell_2$ penalty and this corpus it
-  reverts toward a sane intercept and stays bounded in practice. It serves as a
-  strong, cheap, reproducible baseline and as a control on the training
-  harness itself.
+  \item[Gradient-boosted trees (\texttt{xgboost}, \texttt{xgboost-classifier}).]
+  An additive ensemble of shallow trees, each fit to the residual gradient of
+  the previous stage. As a \emph{regressor} its output is a leaf average,
+  bounded by the range of training targets; as a \emph{classifier} it emits a
+  calibrated probability through a logistic link, the form that wins on
+  rotation. Trees split on individual columns, so they read a track's sparse
+  artist/genre/album identity one-hots \emph{losslessly} and capture non-linear
+  interactions without manual feature crosses --- the reason they dominate this
+  corpus. The cost is a non-deterministic fit (subsampling and column sampling
+  carry an internal RNG seed), so two runs at different seeds differ slightly.
+  The registered champion \texttt{xgboost-classifier-rotation} is this family.
+  \item[Logistic regression.] Linear log-odds passed through a sigmoid: a
+  deterministic, $\ell_2$-regularized linear classifier. It is the natural
+  \emph{linear floor} for a binary target --- the analogue of ridge in the
+  regression world --- and serves as a cheap, reproducible control on the
+  harness. Being a single linear boundary in a dense feature space, it blurs
+  the sparse categorical identity that trees exploit, and it lands well below
+  them on rotation.
+  \item[Kernel SVM / SVC (\texttt{svc} with rbf / linear / poly / sigmoid
+  kernels).] A maximum-margin classifier that operates on kernel-induced
+  distances between points. As a \emph{regressor} (SVR) on a binary target the
+  $\epsilon$-insensitive tube degenerates --- the source of the binary-MAE trap
+  of Section~\ref{sec:svm}; as a proper probability \emph{classifier} (SVC) the
+  divergence vanishes but every kernel still loses to the trees, because a
+  dense-distance / large-margin model cannot read sparse identity one-hots the
+  way an axis-aligned tree split does. The sigmoid kernel is the weakest and is
+  the documented refutation echo.
+  \item[Autoencoder-XGBoost blend (\texttt{autoencoder-xgboost}).] A weighted
+  ensemble $\hat{y}=w\cdot\hat{y}_{\text{ae}}+(1-w)\cdot\hat{y}_{\text{xgb}}$
+  that combines a regressor over a precomputed 64-dimensional
+  song-autoencoder latent with a metadata-XGBoost model, the weight $w$ tuned on
+  a train holdout. Its purpose was to test whether the dense AE latent carries
+  rotation signal the metadata one-hots miss; it does not, and the tuner
+  correctly drives $w\to 0$, collapsing the ensemble to metadata-only XGBoost
+  (Section~\ref{sec:ae-blend}).
 \end{description}
 
-\paragraph{Why metadata-only and the log-target.} Restricting features to
-intrinsic metadata makes the model a cold-start scorer: it predicts
-engagement for a track with zero plays, isolating how much taste fit is
-explainable from catalog attributes versus behavioral co-listening. The
-$\log1p$ target tames the engagement tail at train time, and $\text{expm1}$
-restores raw units at predict time --- the transform pair is the reason the
-blow-up hazard exists and the reason bounded families are preferred until an
-unbounded one is proven safe.
+\paragraph{Why a binary target makes MAE degenerate.} For a continuous target,
+mean absolute error is a faithful summary of how far predictions sit from the
+truth. On a $\{0,1\}$ target it is not: a model can minimize MAE by hugging the
+labels regardless of how it \emph{ranks} or \emph{calibrates} them. An SVR with
+an $\epsilon{=}0.1$ tube snaps its outputs to a two-level step near
+$\{0.1,0.9\}$, sitting only $\sim 0.1$ off every label --- a low MAE --- while
+its ranking is worthless (negative \rsq{}). The metrics that matter for a
+binary taste-fit signal are therefore the classification ones:
+\begin{description}
+  \item[AUC (area under the ROC curve).] The probability that a random positive
+  is ranked above a random negative; \num{0.5} is chance, \num{1.0} is perfect.
+  It is threshold-free and scale-free, depends only on the \emph{ordering} of
+  the predicted probabilities, and is exactly the property the Pathfinder needs
+  from its desirability term. It is the headline metric and the leaderboard
+  sort key.
+  \item[Log-loss.] The negative log-likelihood of the labels under the
+  predicted probabilities; it punishes \emph{confident} mistakes severely and so
+  rewards calibration, not just ranking.
+  \item[Brier score.] The mean squared error between predicted probability and
+  the $\{0,1\}$ label --- a calibration-and-refinement measure on the natural
+  $[0,1]$ scale, lower-better.
+\end{description}
+A model that wins on AUC \emph{and} log-loss \emph{and} Brier, as the champion
+does, is winning on ranking and calibration at once; the binary-MAE artifact
+that flatters a degenerate SVR shows up on none of them.
+
+\paragraph{A note on the historical log-target.} The lab's opening regression
+target, engagement, is heavy-tailed and non-negative, so it was trained against
+a $\log1p$-transform and mapped back with $\text{expm1}$. That transform pair
+carries a hazard --- a model unbounded in log-space can produce a large
+positive log prediction that $\text{expm1}$ amplifies into an enormous value,
+the ``$\text{expm1}$ blow-up'' --- which is why bounded-by-construction families
+(trees, rbf kernels) are preferred over unbounded ones (linear models, MLPs) on
+that target. Engagement remains a documented field and its leaderboard lives in
+\texttt{PROJECT-FACTS.md}, but it is no longer the delivered target, so the
+blow-up hazard is now a historical footnote rather than a live design
+constraint.
+
+\section{The rotation pivot: from engagement magnitude to a binary taste-fit signal}
+\label{sec:rotation-pivot}
+On 2026-06-08 the active target pivoted away from engagement magnitude to a
+binary \emph{rotation} signal, defined as $\text{play\_count} \ge 2$ --- did
+the track earn a repeat listen? Rotation is the actionable input to the
+Playlist Pathfinder's \texttt{W\_FIT} term, where a per-track $[0,1]$
+desirability biases the A* path; a calibrated rotation probability is a
+cleaner \texttt{fit\_norm} than a $\log1p$-then-$\text{expm1}$ engagement
+estimate. Rotation also turns out to be far more learnable than engagement
+magnitude (gradient-boosted trees reach $\text{AUC}\approx 0.73$ on rotation
+versus \rsq{}$\approx 0.3$ on engagement) and is naturally spread for path
+search, with a base rate near \SI{44.5}{\percent}. Engagement is retained as a
+documented scientific field but is no longer the delivered target.
+
+The pivot is decisive for how every number below must be read. Rotation lives
+on the $[0,1]$ scale, so its MAE/\rsq{} are \emph{not} comparable to the
+engagement leaderboard preserved in \texttt{PROJECT-FACTS.md}; and because half
+the rotation labels are exactly zero, the absolute-percentage metrics
+(MAPE/\medape{}) are undefined for those rows. Two distinct metric regimes
+therefore coexist in the rotation campaigns: an early \emph{regression} read
+(MAE, RMSE, \rsq{}, units P(rotation)) and the later, honest
+\emph{classification} read (AUC, log-loss, accuracy, Brier). As the campaigns
+below show, the choice of metric is not cosmetic --- under MAE a kernel SVR can
+\emph{look} competitive while being worse than predicting the mean, an illusion
+that the classification metrics dissolve.
+
+\section{Rotation leaderboard}
+\label{sec:leaderboard}
+Two leaderboards, one per metric regime, both on the rotation target. They are
+not comparable to each other: the regression board (Table~\ref{tab:lb-mae})
+ranks by MAE on the $[0,1]$ scale; the classification board
+(Table~\ref{tab:lb-auc}) ranks by AUC. The AUC board carries the project's
+first registered, promotable rotation champion.
+
+\begin{table}[ht]
+  \centering
+  \caption{Rotation, \emph{classification} regime --- ranked by AUC
+  (higher-better). The champion is the only registered, auto-promoted
+  definition. Datasets: DS-META \dsid{ds-20260609-141622-p1-s42} (115 cols,
+  metadata-only, pca floor); the 178-col row adds the 64 song-AE latent
+  columns (\dsid{ds-20260608-204402-p64-s42}). AUC noise band $2\sigma=0.0126$.}
+  \label{tab:lb-auc}
+  \begin{tabular}{llcccc}
+    \toprule
+    Model & Dataset & AUC & log-loss & accuracy & Registered? \\
+    \midrule
+    \best{xgboost-classifier} (champion) & DS-META & \best{0.7429} & \best{0.5883} & 0.6846 & \best{yes (rank 1)} \\
+    xgboost-classifier (178, +AE latent) & p64-s42 & 0.7350 & 0.6045 & 0.6818 & no \\
+    svc (poly $d{=}3$, best non-tree)    & DS-META & 0.6855 & 0.6452 & 0.6450 & no \\
+    logistic ($C{=}1$, linear floor)     & DS-META & 0.6762 & 0.6329 & 0.6491 & no \\
+    svc (rbf)                            & DS-META & 0.6722 & 0.6469 & 0.6426 & no \\
+    svc (linear)                         & DS-META & 0.6363 & 0.6535 & 0.6373 & no \\
+    svc (sigmoid, worst)                 & DS-META & 0.6255 & 0.6673 & 0.6267 & no \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \centering
+  \caption{Rotation, \emph{regression} regime --- ranked by MAE on the $[0,1]$
+  P(rotation) scale (lower-better). The metadata-only XGBoost leader is the
+  \texttt{mae\_xgb} branch reproduced inside every blend run; it was never
+  saved as a standalone definition. The SVM-poly row is listed for
+  completeness and \emph{refuted}: its lower MAE is the $\epsilon$-tube
+  artifact of Section~\ref{sec:svm}, its \rsq{} is negative. MAE noise band
+  $2\sigma=0.0086$.}
+  \label{tab:lb-mae}
+  \begin{tabular}{lcccl}
+    \toprule
+    Model & MAE & RMSE & \rsq{} & Source \\
+    \midrule
+    \best{metadata-only XGBoost} (AE latent dropped) & \best{0.3879} & \best{0.4475} & \best{0.191} & ae-blend / svm \\
+    xgboost on latent+metadata combined              & 0.3965 & --- & 0.166 & rotation pivot \\
+    xgboost on AE-latent only (64 cols)              & 0.4098 & --- & 0.132 & rotation pivot \\
+    svm (poly, $\epsilon$-tube artifact --- REFUTED) & 0.3814 & 0.5303 & $-0.137$ & svm \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \section{Campaigns}
-No campaigns have run yet. Each campaign appends a section here as it lands,
-transcribing its results and citing its source report in \texttt{experiments/}.
+
+\subsection{Autoencoder-latent + XGBoost blend: a dead modality, isolated}
+\label{sec:ae-blend}
+\emph{Rationale.} This was the first campaign on the pivoted rotation target.
+The hypothesis was that a precomputed 64-dimensional song-autoencoder latent
+(from the Qdrant collection \texttt{spotify\_tracks\_song\_ae}) carries a
+track's \emph{identity} in a way the metadata one-hots do not, and that
+blending an AE-latent regressor with a metadata-XGBoost model ---
+$\hat{y}=w\cdot\hat{y}_{\text{ae}}+(1-w)\cdot\hat{y}_{\text{xgb}}$, with the
+weight $w$ tuned on a train holdout --- could beat metadata-XGBoost alone. All
+six arms ran on \dsid{ds-20260608-204402-p64-s42} (64 AE latent + 114 metadata
+$=$ 178 cols, 12{,}256 rows, 9{,}805/2{,}451 at seed 42), varying only the AE
+branch (kNN at $k\in\{10,25,50,100,200\}$, plus a ridge-on-latent arm).
+
+\emph{Results.} All six runs (\runid{run-20260609-131545-e34e4} and siblings)
+succeeded, and all returned byte-identical blended metrics --- MAE 0.38789,
+\rsq{} 0.191, RMSE 0.4475 --- because the weight tuner drove $w\to 0$ in every
+arm. The only axis that moved was the AE branch's standalone error
+$mae_{\text{ae}}$, which grew monotonically with the neighborhood size, from
+0.4259 at $k=10$ to 0.4702 at $k=200$ (the ridge arm landed at 0.4623, between
+$k=100$ and $k=200$). Figure~\ref{fig:ae-knn} shows the curve against the three
+horizontal references that matter: even the best AE read ($k=10$, 0.4259) never
+reaches the metadata-only tree (0.3879), nor even the AE-latent-only
+\emph{xgboost} on record (0.4098).
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{ae_latent_knn}
+  \caption{The song-AE latent carries no rotation signal the metadata
+  one-hots do not already carry better. The kNN standalone error
+  $mae_{\text{ae}}$ rises monotonically as the neighborhood widens (the
+  latent's signal is strongest in tight local neighborhoods and washes toward
+  the base rate), and even its best point sits above both the AE-latent-only
+  tree and the metadata-only tree. The weight tuner correctly drives the blend
+  weight to zero, so the ensemble collapses to metadata-only XGBoost.}
+  \label{fig:ae-knn}
+\end{figure}
+
+\emph{Interpretation.} The collapse to $w=0$ is the correct answer, not a bug
+to fix: given an AE branch strictly worse than the XGB branch on the holdout,
+the optimal convex weight \emph{is} zero. The architecture's one real value was
+that it \emph{isolated} the latent into a branch the tuner could discard,
+recovering a cleaner result than feeding the latent into a unified XGBoost ---
+which actually \emph{dilutes} the tree (MAE 0.3965 with the 64 latent columns
+present versus 0.3879 with them dropped). The song-AE latent thus joins
+co-listening, content-text and acoustic features as a dense modality that loses
+to categorical identity one-hots. The one caveat at the time was honesty about
+significance: the $0.3879$ versus $0.3965$ edge is only $0.0086$ MAE on a
+$[0,1]$ target, and the rotation noise band was then unmeasured --- so the
+campaign reported the number but asserted no significant win and promoted
+nothing.
+\emph{Source: \texttt{2026-06-09-ae-xgboost-blend.md}.}
+
+\subsection{Kernel SVM on rotation: a refutation, and the binary-MAE trap}
+\label{sec:svm}
+\emph{Rationale.} With the latent ruled out, this campaign tested whether any
+SVM kernel (rbf / linear / poly / sigmoid) produces a rotation predictor
+competitive with the metadata-only XGBoost leader, and --- only if one passed
+--- whether it added orthogonal signal in a grid-weighted blend. The metadata
+matrix was reduced to the pca floor in a new dataset
+(\dsid{ds-20260609-141622-p1-s42}, 115 cols), with two split-seed siblings
+(seeds 17 and 101) built to measure the noise band, and the champion reproduced
+as a control (\runid{run-20260609-141717-9a8ba-autoencoder-xgboost}, blend
+weight 0). A secondary outcome was the campaign's central deliverable: the
+\textbf{first measured rotation noise band}.
+
+\emph{Results.} Across the three split seeds of the metadata-only XGBoost
+control (s42 0.387891, s17 0.393072, s101 0.396417) the sample standard
+deviation is $\sigma_{\text{split}}=0.00430$, giving a $2\sigma$ significance
+band of \textbf{0.0086 MAE} on the $[0,1]$ scale. This retroactively settles
+the previous campaign's open question: the $0.3879$ versus $0.3965$ edge is
+$\Delta 0.0086 \approx 1{\cdot}\text{band}$ (likely better, not confident),
+while the $0.3879$ versus $0.4098$ gap (AE-latent-only) is $\sim
+2.5{\cdot}\text{band}$ and therefore real. As for the SVM arms, rbf, linear and
+poly all posted MAE inside the control band (0.381--0.390), \emph{lower} than
+the champion in the poly case (0.3814) --- yet every one of them is
+worse-than-mean on \rsq{} ($-0.13$ to $-0.20$), with RMSE 0.53--0.54 against
+the tree's 0.4475. Sigmoid SVR diverged outright: MAE 0.624, RMSE 1.531, \rsq{}
+$-8.48$, with predictions reaching 24.7 on a $[0,1]$ target --- the classic
+unbounded sigmoid-SVR blow-up. Figure~\ref{fig:svm} contrasts the two metric
+views directly.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.95\textwidth]{svm_mae_vs_r2}
+  \caption{On a binary target, low SVR MAE is an artifact, not skill. With
+  $\epsilon=0.1$ on a $\{0,1\}$ target the SVR snaps its outputs to the
+  $\epsilon$-tube edges (a hard two-level step, $p_{50}\approx 0.10$,
+  $p_{90}\approx 0.90$), so each row sits only $\sim 0.1$ off its label and the
+  \emph{MAE} (left) reads competitive. The honest \emph{$R^2$} (right) exposes
+  it: every kernel is worse than predicting the mean. Sigmoid is off-scale at
+  $R^2=-8.48$.}
+  \label{fig:svm}
+\end{figure}
+
+\emph{Interpretation.} The low SVR MAE is a degeneracy of the metric on a
+binary target. With an $\epsilon$-tube of width $0.1$ on $\{0,1\}$ labels, the
+SVR collapses to a two-level step function pinned near the right classes ---
+each row is about $0.1$ off its label, so the MAE is small, while calibration
+and ranking are destroyed (negative \rsq{}). The metric that matters for the
+Pathfinder \texttt{fit\_norm} (ranking and calibration, i.e.\ \rsq{}/RMSE/AUC)
+says the SVM loses decisively. Worse, the two stage-2 blends
+(\runid{run-20260609-143114-528ef-blend} and its lgbm twin) fitted weights of
+exactly $[0.0, 1.0]$ --- the grid, optimizing the same degenerate validation
+MAE, \emph{mis-selected pure SVM} and discarded the tree, the opposite of the
+self-disabling seen in the blend campaign. The lesson is sharp: a grid-by-MAE
+blend objective is itself unsafe on a binary target. Nothing was registered or
+promoted; kernel SVM became the fifth dense-regime family to lose to one-hot
+identity on this corpus.
+\emph{Source: \texttt{2026-06-09-svm-kernel-rotation.md}.}
+
+\subsection{The honest AUC bake-off and the first AUC champion}
+\label{sec:auc}
+\emph{Rationale.} The SVM campaign exposed that MAE is the wrong lens for a
+binary target. The framework had meanwhile gained a classification mode
+(\texttt{domain.toml} \texttt{task = binary}, primary metric AUC,
+higher-better; the best-models group ranks by AUC and auto-promotes the top
+run). This campaign re-ran the comparison on that honest footing: xgboost-classifier
+against logistic and a four-kernel SVC scan, all on DS-META, plus a
+178-column arm with the AE latent re-added to settle the latent-dilution
+question on the AUC axis, and three control seeds to measure the AUC noise
+band. The hypothesis --- a sixth test of the convergent finding --- was that
+xgboost-classifier wins and every dense family loses.
+
+\emph{Results.} All nine runs succeeded. The champion config
+(\runid{run-20260609-172920-627d6-xgboost-classifier}, control hyperparameters,
+seed 42) reached \textbf{AUC 0.7429} (log-loss 0.5883, accuracy 0.6846, Brier
+0.2017) and was registered as \texttt{xgboost-classifier-rotation} and
+auto-promoted to best-models rank 1 --- the project's first saved, AUC-scored,
+promotable rotation champion. The first measured \emph{AUC} noise band comes
+from the three control seeds (s42 0.742934, s17 0.730659, s101 0.734469, mean
+0.736020): $\sigma_{\text{AUC}}=0.00628$, $2\sigma=\textbf{0.0126}$
+(Figure~\ref{fig:auc-band}). This band is a different metric from the 0.0086
+MAE band and does not replace it. Every dense family lost by many bands ---
+svc-poly 0.6855, logistic 0.6762, svc-rbf 0.6722, svc-linear 0.6363,
+svc-sigmoid 0.6255 --- a spread of 4.6 to 9.3 noise bands below the champion
+(Figure~\ref{fig:auc-bakeoff}). The 178-column arm (AE latent re-added) scored
+0.7350, $-0.0079$ below the metadata-only champion --- the same dilutive
+direction as the regression result, but inside the AUC band, so
+neutral-leaning-dilutive at a single seed.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{auc_bakeoff}
+  \caption{The honest classification metric confirms the convergent finding a
+  sixth time. xgboost-classifier reads the sparse artist/genre/album identity
+  one-hots losslessly; the dense distance/margin families (logistic and all
+  four SVC kernels) blur that identity in a dense feature space and land 4.6 to
+  9.3 noise bands lower. The shaded strip is the $2\sigma=0.0126$ band below
+  the champion; no challenger comes within a band of it.}
+  \label{fig:auc-bakeoff}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.7\textwidth]{auc_noise_band}
+  \caption{The first measured rotation AUC noise band. Three data-split seeds
+  of the registered champion config give $\sigma_{\text{AUC}}=0.0063$ and a
+  $2\sigma$ significance band of $0.0126$. In relative terms this is actually
+  tighter than the MAE band (0.85\% versus 1.10\% coefficient of variation),
+  as expected for a rank metric on 2{,}451 test rows. The band only matters for
+  the sub-band latent-dilution call; champion and challengers are separated by
+  many bands.}
+  \label{fig:auc-band}
+\end{figure}
+
+\emph{Interpretation.} Reframing rotation as classification did two things at
+once. It dissolved the SVR illusion of Section~\ref{sec:svm} --- under AUC,
+log-loss \emph{and} Brier, every SVC kernel is now visibly worse than the
+trees, all in the same direction, so the $\epsilon$-tube artifact that made
+SVR's MAE look competitive simply vanishes. And it confirmed that the metric
+was only ever a problem for the \emph{fairness of the comparison}; the dense
+family was always the loser. Notably svc-sigmoid does not collapse to chance
+under classification (it holds AUC 0.6255 rather than blowing up): a proper
+probability objective removes the unbounded divergence that wrecked the
+SVR-sigmoid run. The convergent finding now stands on an honest metric: the
+taste-fit signal lives in artist/genre/album \emph{identity}, captured by
+sparse one-hots and exploited by trees, not in dense distance or margin models.
+The remaining lever is identity \emph{resolution} --- raising the vocabulary
+caps so the \texttt{artist=\_\_other\_\_} tail gets real columns --- not new
+modalities or families. The next planned campaign is a champion hyperparameter
+scan now that the family and metric are settled.
+\emph{Source: \texttt{2026-06-09-rotation-classification.md}.}
+
+\section{Conclusions}
+\label{sec:conclusions}
+Three Jun-2026 campaigns on the pivoted rotation target converge on a single
+story. (1) Across two feature campaigns and a model-family scan, every dense
+modality and every dense distance/margin family loses to categorical identity
+one-hots read by gradient-boosted trees --- the song-AE latent dilutes
+(Section~\ref{sec:ae-blend}), and kernel SVM is worse-than-mean
+(Section~\ref{sec:svm}), the fifth such family. (2) The choice of metric is
+load-bearing on a binary target: MAE is degenerate (a two-level
+$\epsilon$-tube predictor posts a deceptively low MAE while being worse than
+the mean), and a grid-by-MAE blend even mis-selects such a predictor; the
+honest classification metrics (AUC, log-loss, Brier) restore a fair comparison
+(Section~\ref{sec:auc}). (3) The campaigns delivered two measured noise bands
+--- $2\sigma=0.0086$ MAE and $2\sigma=0.0126$ AUC --- and the project's first
+registered, promotable rotation champion, \texttt{xgboost-classifier-rotation}
+at AUC 0.7429. The ceiling appears set by identity resolution, not by
+architecture: the next lever is raising vocabulary caps, not adding families.
 
 \section{Source reports}
-None yet. Reports accumulate in \texttt{experiments/} as campaigns run.
+This synthesis consolidates three campaign reports from \texttt{experiments/}:
+\begin{itemize}
+  \item \texttt{2026-06-09-ae-xgboost-blend.md} --- autoencoder-latent +
+    XGBoost blend on rotation (Section~\ref{sec:ae-blend}).
+  \item \texttt{2026-06-09-svm-kernel-rotation.md} --- kernel SVM scan and
+    conditional blend; first measured MAE noise band (Section~\ref{sec:svm}).
+  \item \texttt{2026-06-09-rotation-classification.md} --- AUC bake-off, first
+    measured AUC noise band, first registered rotation champion
+    (Section~\ref{sec:auc}).
+\end{itemize}
 
 \end{document}
