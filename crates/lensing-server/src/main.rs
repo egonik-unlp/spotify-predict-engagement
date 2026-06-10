@@ -99,10 +99,17 @@ async fn main() -> Result<()> {
 
     match &cli.command {
         Some(Cmd::MigrateData) => return migrate_data(&root, &database_url).await,
-        Some(Cmd::Worker { hub_url, once, poll_secs }) => {
+        Some(Cmd::Worker {
+            hub_url,
+            once,
+            poll_secs,
+        }) => {
             return worker::run(root, database_url, hub_url.clone(), *once, *poll_secs).await;
         }
-        Some(Cmd::Infer { infer_port, max_predicts }) => {
+        Some(Cmd::Infer {
+            infer_port,
+            max_predicts,
+        }) => {
             return infer::run(
                 root,
                 database_url,
@@ -117,8 +124,10 @@ async fn main() -> Result<()> {
 
     let domain = lensing_core::domain::Domain::load_or_default(&root)?;
     // CLI flags override the domain's corpus collections.
-    let collection =
-        cli.collection.clone().unwrap_or_else(|| domain.corpus.collection.clone());
+    let collection = cli
+        .collection
+        .clone()
+        .unwrap_or_else(|| domain.corpus.collection.clone());
     let manual_collection = cli
         .manual_collection
         .clone()
@@ -136,7 +145,12 @@ async fn main() -> Result<()> {
     eprintln!(
         "[lensing-server] {} predictors registered: {}",
         registry.predictors.len(),
-        registry.predictors.iter().map(|p| p.name.as_str()).collect::<Vec<_>>().join(", ")
+        registry
+            .predictors
+            .iter()
+            .map(|p| p.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
     );
 
     // Stale-run sweep must precede the backfill so swept `interrupted`
@@ -167,7 +181,9 @@ async fn main() -> Result<()> {
             }
             Err(e) => {
                 eprintln!("[lensing-server] WARNING: metadata database unreachable, running file-only: {e:#}");
-                eprintln!("[lensing-server]          start it with `zig build db-up` (docker compose)");
+                eprintln!(
+                    "[lensing-server]          start it with `zig build db-up` (docker compose)"
+                );
                 None
             }
         }
@@ -184,13 +200,19 @@ async fn main() -> Result<()> {
             if let Err(e) = definitions::export_file(&root, &defs) {
                 eprintln!("[lensing-server] models.toml export failed: {e:#}");
             }
-            eprintln!("[lensing-server] {} model definitions loaded from the database", defs.definitions.len());
+            eprintln!(
+                "[lensing-server] {} model definitions loaded from the database",
+                defs.definitions.len()
+            );
             defs
         }
         None => {
             let defs = definitions::load_file(&definitions::definitions_path(&root))?;
             if !defs.definitions.is_empty() {
-                eprintln!("[lensing-server] {} model definitions loaded from models.toml", defs.definitions.len());
+                eprintln!(
+                    "[lensing-server] {} model definitions loaded from models.toml",
+                    defs.definitions.len()
+                );
             }
             defs
         }
@@ -198,7 +220,9 @@ async fn main() -> Result<()> {
 
     // OpenAI embeddings config for manual listings; key absence only blocks
     // listing creation, the rest of the server is unaffected.
-    let openai_api_key = std::env::var("OPENAI_API_KEY").ok().filter(|k| !k.is_empty());
+    let openai_api_key = std::env::var("OPENAI_API_KEY")
+        .ok()
+        .filter(|k| !k.is_empty());
     // LENSING_* is the canonical prefix; PG_* is honored as a legacy fallback
     // so pre-rename .env files keep working.
     let env_or_legacy = |name: &str, legacy: &str| {
@@ -222,6 +246,11 @@ async fn main() -> Result<()> {
     // PDEATHSIG set in spawn_sidecar). Pointed at the same Qdrant + this
     // server for habit-fit scoring. `_pf_sidecar` must outlive `serve`.
     let _pf_sidecar = pathfinder::spawn_sidecar(&root, &cli.qdrant_url, &collection, cli.port);
+    // TODO: print edu, remover luego
+    println!(
+        "Sidecar:\nSpawned sidecar at port: {}\nResulting object: {:?}",
+        cli.port, _pf_sidecar
+    );
 
     let db_sink = db.clone().map(lensing_db::sink::DbSink::spawn);
     let state = Arc::new(AppState {
@@ -254,21 +283,39 @@ async fn main() -> Result<()> {
         .route("/domain", get(api::get_domain))
         .route("/openapi.yaml", get(api::openapi_spec))
         .route("/predictors", get(api::list_predictors))
-        .route("/datasets", get(api::list_datasets).post(api::build_dataset))
+        .route(
+            "/datasets",
+            get(api::list_datasets).post(api::build_dataset),
+        )
         .route("/datasets/preflight", axum::routing::post(api::preflight))
-        .route("/datasets/analyze", axum::routing::post(api::analyze_dataset))
+        .route(
+            "/datasets/analyze",
+            axum::routing::post(api::analyze_dataset),
+        )
         .route("/datasets/{id}", get(api::get_dataset))
         .route("/datasets/{id}/items", get(api::get_dataset_items))
         .route("/datasets/{id}/split", get(api::get_dataset_split))
         .route("/datasets/{id}/archive", get(api::dataset_archive))
-        .route("/datasets/{id}/rename", axum::routing::post(api::rename_dataset))
+        .route(
+            "/datasets/{id}/rename",
+            axum::routing::post(api::rename_dataset),
+        )
         .route("/builds/{id}", get(api::get_build))
         .route("/jobs/{id}", get(api::get_job))
         .route("/corpus/search", get(api::corpus_search))
-        .route("/corpus/centroid", axum::routing::post(api::corpus_centroid))
+        .route(
+            "/corpus/centroid",
+            axum::routing::post(api::corpus_centroid),
+        )
         .route("/collections", get(api::list_collections))
-        .route("/collections/validate", axum::routing::post(api::validate_collection))
-        .route("/collections/export", axum::routing::post(api::export_collection))
+        .route(
+            "/collections/validate",
+            axum::routing::post(api::validate_collection),
+        )
+        .route(
+            "/collections/export",
+            axum::routing::post(api::export_collection),
+        )
         .route("/runs", get(api::list_runs).post(api::start_run))
         .route("/runs/{id}", get(api::get_run).delete(api::delete_run))
         .route("/runs/{id}/predictions", get(api::get_predictions))
@@ -278,19 +325,42 @@ async fn main() -> Result<()> {
         .route("/runs/{id}/viz", get(api::get_run_viz))
         .route("/runs/{id}/blend", get(api::get_run_blend))
         .route("/models", get(api::list_models).post(api::promote_model))
-        .route("/models/{name}", get(api::get_model).delete(api::delete_model))
+        .route(
+            "/models/{name}",
+            get(api::get_model).delete(api::delete_model),
+        )
         .route("/models/{name}/viz", get(api::get_model_viz))
         .route("/models/{name}/blend", get(api::get_model_blend))
         .route("/models/{name}/contract", get(api::get_model_contract))
-        .route("/models/{name}/predict", axum::routing::post(api::predict_model))
-        .route("/models/{name}/rename", axum::routing::post(api::rename_model))
-        .route("/best-models", get(api::get_best_models).put(api::put_best_models))
-        .route("/best-models/recompute", axum::routing::post(api::recompute_best_models))
-        .route("/best-models/predict", axum::routing::post(api::predict_best_models))
-        .route("/listings", get(api::list_listings).post(api::create_listing))
+        .route(
+            "/models/{name}/predict",
+            axum::routing::post(api::predict_model),
+        )
+        .route(
+            "/models/{name}/rename",
+            axum::routing::post(api::rename_model),
+        )
+        .route(
+            "/best-models",
+            get(api::get_best_models).put(api::put_best_models),
+        )
+        .route(
+            "/best-models/recompute",
+            axum::routing::post(api::recompute_best_models),
+        )
+        .route(
+            "/best-models/predict",
+            axum::routing::post(api::predict_best_models),
+        )
+        .route(
+            "/listings",
+            get(api::list_listings).post(api::create_listing),
+        )
         .route(
             "/listings/{id}",
-            get(api::get_listing).put(api::update_listing).delete(api::delete_listing),
+            get(api::get_listing)
+                .put(api::update_listing)
+                .delete(api::delete_listing),
         )
         .route(
             "/definitions",
@@ -302,15 +372,30 @@ async fn main() -> Result<()> {
                 .patch(api::update_definition)
                 .delete(api::delete_definition),
         )
-        .route("/definitions/{name}/rename", axum::routing::post(api::rename_definition))
-        .route("/definitions/{name}/clone", axum::routing::post(api::clone_definition))
+        .route(
+            "/definitions/{name}/rename",
+            axum::routing::post(api::rename_definition),
+        )
+        .route(
+            "/definitions/{name}/clone",
+            axum::routing::post(api::clone_definition),
+        )
         // Playlist pathfinder: reverse-proxied to the Python sidecar.
         .route("/pathfinder/search", get(pathfinder::proxy_search))
         .route("/pathfinder/path", get(pathfinder::proxy_path))
-        .route("/pathfinder/spotify/search", get(pathfinder::proxy_spotify_search))
-        .route("/pathfinder/spotify/status", get(pathfinder::spotify_status))
+        .route(
+            "/pathfinder/spotify/search",
+            get(pathfinder::proxy_spotify_search),
+        )
+        .route(
+            "/pathfinder/spotify/status",
+            get(pathfinder::spotify_status),
+        )
         .route("/pathfinder/spotify/login", get(pathfinder::spotify_login))
-        .route("/pathfinder/spotify/callback", get(pathfinder::spotify_callback))
+        .route(
+            "/pathfinder/spotify/callback",
+            get(pathfinder::spotify_callback),
+        )
         .route(
             "/pathfinder/spotify/export",
             axum::routing::post(pathfinder::spotify_export),
@@ -323,7 +408,10 @@ async fn main() -> Result<()> {
         .fallback_service(spa);
 
     let addr = format!("0.0.0.0:{}", cli.port);
-    eprintln!("[lensing-server] listening on http://localhost:{}", cli.port);
+    eprintln!(
+        "[lensing-server] listening on http://localhost:{}",
+        cli.port
+    );
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
