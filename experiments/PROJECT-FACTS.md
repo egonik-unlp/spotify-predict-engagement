@@ -8,7 +8,7 @@ and must be updated. Writers: the experiment-runner agent and the
 model-definitions experiment workflow reconcile this file as part of every
 campaign report.
 
-Last updated: 2026-06-12 after experiments/2026-06-12-burn-deep-topology.md —
+Last updated: 2026-06-12 — after experiments/2026-06-12-high-vocab-topology.md, the HIGH-VOCAB paired re-run of the burn-deep-classifier topology bake-off on `ds-20260612-143014-p64-s42` (artist cap 300 / genre 120; identity cardinality the only axis vs the canonical full-64-d dataset). VERDICT: the "embeddings starved at low cardinality" hypothesis from experiments/2026-06-12-burn-deep-topology.md is **RESOLVED-CONFIRMED (directionally)** — the topology ranking REVERSED: `embeddings` (0.7192) now beats `mlp` (0.7129, +0.0063) and `wide_deep` (0.7061), undoing the old +0.0067 mlp-over-embeddings margin (a +0.0130 swing across the band). Both trees ALSO moved up on the wider matrix (xgboost 0.7204→**0.7299**, catboost 0.7111→**0.7252**) — high vocab helps every family; the in-dataset tree tier is 0.7252–0.7299. The best embeddings net reaches the BOTTOM of that tree tier (Phase-2 ed8/lr0.0005 0.7228, −0.0024 vs catboost, in-band) and the saved Phase-1-winner config (embeddings, ed16, lr0.001, 0.7192) is the FIRST ANN to clear the save bar on rotation: registered as `burn-deep-embeddings-highvocab` (dataset_tags [ds-20260612-143014-p64-s42]), flagged for best-model-selector. embed_dim is already saturated at 8 (ed8≥ed16≥ed32, sub-band); the gain came from enabling embeddings + lr 0.0005, not from width. Determinism confirmed (ed16/lr0.001 reproduced to 4 digits). Prior update — built `ds-20260612-143014-p64-s42`, a HIGH-VOCAB variant of the canonical full-64-d rotation dataset (artist one-hot cap 60->300, genre_primary 40->120; everything else byte-identical) to feed this bake-off. Prior update after experiments/2026-06-12-burn-deep-topology.md —
 a burn-deep-classifier (NEW Rust/burn predictor) topology bake-off {mlp, embeddings,
 wide_deep} + a 6-cell mlp tune on the full-64-d rotation dataset. Verdict: the full-rust
 net with RAW (un-standardized) one-hots **FIXES the sklearn pyramid's calibration blowup
@@ -146,6 +146,42 @@ mlp) — between the tree tier and ngboost; its logloss ~0.62 / brier ~0.22 FIX 
 pyramid's calibration blowup (2.0–2.4 / 0.33), shrinking the dense-vs-trees gap from
 ~3.3 bands to ~1 band, though it still does not clear the ~0.71 save bar.
 
+
+## Best on record (AUC leaderboard) — ROTATION classification, HIGH-VOCAB full-64-d corpus
+
+Classification mode, AUC higher-better. Source:
+experiments/2026-06-12-high-vocab-topology.md. **SEPARATE matrix from every board above** —
+dataset `ds-20260612-143014-p64-s42` is the SAME 2026 corpus / 23,529 rows / 18,823/4,706
+@ seed 42 as the full-64-d board, but **497 cols** (64 song-AE PCA latent + 9 numeric +
+426 identity one-hots: artist 301, genre_primary 121, album_type 4) — identity caps raised
+to artist 300 / genre 120. AUC here is NOT comparable to the 177-col full-64-d board nor to
+DS-META; the only valid in-dataset references are the Phase-0 trees re-run on THIS matrix
+(below). Built specifically to test the "embeddings starved" hypothesis — see header.
+
+| model | dataset | AUC | logloss | accuracy | source | registered? |
+|---|---|---|---|---|---|---|
+| **xgboost-classifier** (n_est 500, depth 6, lr 0.05, sub/col 0.8, seed 42) — in-dataset leader | ds-20260612-143014-p64-s42 (497) | **0.7299** | 0.6022 | 0.6719 | this dataset's bake-off | no |
+| catboost-classifier (registry defaults) — 2nd tree family, in-band | ds-20260612-143014-p64-s42 | 0.7252 | 0.6068 | 0.6649 | same | no |
+| burn-deep-classifier (topology embeddings, ed8, lr0.0005, [128,64]) — Phase-2 best, in tree tier | ds-20260612-143014-p64-s42 | 0.7228 | 0.6105 | 0.6645 | same | no |
+| **burn-deep-classifier** (topology embeddings, ed16, lr0.001, [128,64]) — Phase-1 winner, SAVED | ds-20260612-143014-p64-s42 | 0.7192 | 0.6087 | 0.6694 | same | **YES — `burn-deep-embeddings-highvocab`, dataset_tags [ds-20260612-143014-p64-s42]; flagged for best-model-selector** |
+| burn-deep-classifier (topology mlp, lr0.001, [128,64]) | ds-20260612-143014-p64-s42 | 0.7129 | 0.6166 | 0.6617 | same | no |
+| burn-deep-classifier (topology wide_deep, lr0.001, [128,64]) | ds-20260612-143014-p64-s42 | 0.7061 | 0.6256 | 0.6526 | same | no |
+
+Read: raising identity cardinality (artist 60→300, genre 40→120) **FLIPS the burn-deep
+topology ranking** — `embeddings` rose from last-ish (below mlp by 0.0067 on the 60/40
+matrix) to FIRST (above mlp by 0.0063 here): the "embeddings starved" hypothesis is
+RESOLVED-CONFIRMED directionally (the per-arm margin is sub-band → 3-split confirm pending,
+but the ranking reordered as predicted). The trees ALSO gained on the wider matrix
+(xgboost +0.0095, catboost +0.0141) — high vocab is better signal for everyone, not an
+embeddings-only effect — so xgboost remains the in-dataset champion (0.7299) and the
+embeddings net reaches only the BOTTOM of the tree tier (best 0.7228, −0.0024 vs catboost,
+in-band). The saved Phase-1-winner embeddings config (0.7192) is the FIRST ANN to clear the
+save bar on rotation (within ~1 band of the tree tier). embed_dim is saturated at 8
+(ed8≥ed16≥ed32, all sub-band); the win came from enabling embeddings + lr 0.0005, not from a
+wider table. Logloss ~0.61 / brier ~0.21 stay in the trees' calibrated regime. Collinearity
+note: at high vocab the manifest flags 21 near-perfect genre↔artist one-hot pairs (a rare
+genre carried by a single newly-admitted artist) — absorbed by all families, no pathology.
+
 ## HISTORICAL leaderboard — engagement target (demoted, not the active target)
 
 | model | dataset | MAE | RMSE | R² | source |
@@ -192,6 +228,7 @@ delivered target.
 |---|---|---|
 | ds-20260608-204402-p64-s42 (pca=64 over the `spotify_tracks_song_ae` AE-latent collection + 114 metadata cols = 178; target rotation/none; `nonpositive_price=FALSE`) | rotation pivot seed run (xgboost latent+metadata, run-20260608-204415-6eeda); the entire 2026-06-09 autoencoder-xgboost blend campaign | 12,256 rows (NO exclusions — rotation==0 is the negative class), 9,805 train / 2,451 test @ seed 42. The 64 "pca" cols ARE the precomputed 64-dim song-autoencoder latent (kind.type=="pca" in the manifest), NOT a behavioral co-listening PCA. The autoencoder-xgboost predictor splits columns by this manifest kind: latent branch = the 64; metadata branch = the other 114. |
 | ds-20260609-204419-p64-s42 (pca=64 song-AE latent + 7 numeric + 106 identity one-hots = 177; target rotation/none; `nonpositive_price=FALSE`) — the **NEW 2026-corpus canonical full-64-d** rotation dataset | the 2026-06-12 four-family classifier bake-off (xgboost/catboost/ngboost/pyramid-mlp + the xgboost depth×lr sweep, 13 runs); the registered `xgboost-classifier-rotation-p64` lives here; pre-existing reference run run-20260609-204726-439d8-xgboost-classifier (AUC 0.7204); the 2026-06-12 burn-deep-classifier topology bake-off + mlp tune (9 runs, `2026-06-12-burn-deep-topology.md`, no definition saved) | **23,529 rows** (18,823 train / 4,706 test @ seed 42), 177 cols. The NEW (larger, 2026) corpus — NOT the 12,256-row DS-META corpus; AUC numbers on this dataset are NOT comparable to the 0.7429 DS-META champion. xgboost reproduces 0.7204 deterministically (byte-identical across the reference run, C0, and the depth6/lr0.05 sweep cell). |
+| ds-20260612-143014-p64-s42 (HIGH-VOCAB rotation: identical to ds-20260609-204419-p64-s42 EXCEPT vocab caps artist 60->**300**, genre_primary 40->**120**; pca=64 song-AE latent + 7 numeric + **426** identity one-hots = **497**; target rotation/none; seed 42 / test_ratio 0.2; `nonpositive_price=FALSE`) | a planned re-run of the burn-deep-classifier topology bake-off ({mlp, embeddings, wide_deep}) to test whether entity embeddings pay off once identity cardinality is large enough -- the `2026-06-12-burn-deep-topology.md` finding was that `embeddings` LOST to plain `mlp` because cardinality was starved at the canonical caps | **23,529 rows** (18,823 train / 4,706 test @ seed 42), 497 cols. SAME corpus/rows/split as the canonical; differs ONLY in identity cardinality. One-hot groups: artist **301** (top-300 + __other__, 50.4% of artist mass, boundary min freq 14), genre_primary **121** (top-120 + __other__, 78.8% of genre mass, boundary min freq 31), album_type 4 (unchanged). Canonical caps captured only artist 25.1% / genre 60.8%. PCA dims unchanged => EVR identical to ds-20260609-204419-p64-s42. |
 | ds-20260608-205802-p64-s42 (pca=64 AE-latent ONLY, no metadata cols) | xgboost on AE-latent only (rotation), the AE-latent-only baseline | 64 cols. Used to measure the latent's standalone rotation signal (MAE 0.4098, R² 0.132 — weaker than metadata). |
 | ds-20260609-141622-p1-s42 (METADATA-ONLY rotation: pca floor=1, NO AE latent; same recipe as p64-s42 with AE cols dropped; target rotation/`none`; `nonpositive_price=FALSE`) | the 2026-06-09 svm-kernel scan (all SVM arms + fair-anchor control + both stage-2 blends) AND the 2026-06-09 rotation-classification bake-off (registered AUC champion `xgboost-classifier-rotation` lives on this recipe) | 115 cols = 1 pca floor + 7 numeric + 107 one-hot; 12,256 rows, 9,805/2,451 @ seed 42. The fair SVM anchor: metadata-only xgboost on this matrix = byte-identical 0.387891 to the 178-col champion (AE branch w=0), so dropping the 64 latent cols is a no-op for the tree. Built with `log_target=false` to get transform `none` (the canonical rotation recipe). |
 | ds-20260609-141641-p1-s17, ds-20260609-141641-p1-s101 (METADATA-ONLY rotation, same recipe, split seeds 17 / 101) | the rotation noise-band measurement (σ_split) | 115 cols each. metadata-only xgboost MAE s17 0.393072 / s101 0.396417 — with s42 0.387891 these three define σ_split = 0.0043 (band 0.0086). Also serve as 2 of the 3 seeds for the pending champion 3-seed confirmation. |

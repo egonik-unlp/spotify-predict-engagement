@@ -101,3 +101,26 @@ n_estimators = 500
 reg_lambda = 1.0
 seed = 42
 subsample = 0.8
+
+[[definitions]]
+name = "burn-deep-embeddings-highvocab"
+predictor = "burn-deep-classifier"
+dataset_tags = ["ds-20260612-143014-p64-s42"]
+created_at = "2026-06-12T14:36:55.398712720+00:00"
+updated_at = "2026-06-12T14:37:35.872970551+00:00"
+
+[definitions.hyperparams]
+activation = "relu"
+batch_size = 256
+checkpoint_every = 0
+dropout = 0.1
+embed_dim = 16
+epochs = 250
+hidden = [
+    128,
+    64,
+]
+lr = 0.001
+patience = 20
+topology = "embeddings"
+val_fraction = 0.15
