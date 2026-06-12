@@ -396,3 +396,50 @@ pub fn load(path: &Path, cfg: &ArchConfig) -> Result<DeepClf<Inner>> {
         .load_file(path.to_string_lossy().as_ref(), &CompactRecorder::new(), &device)
         .map_err(|e| anyhow::anyhow!("load checkpoint {}: {e}", path.display()))
 }
+
+/// One dense layer's parameters, extracted for ONNX export. `weight` is
+/// row-major `[w_in, w_out]` (burn's `Linear` layout → ONNX `Gemm`/`MatMul`
+/// with no transpose). `bias` is `None` for the bias-free embedding projections.
+pub struct ExportLayer {
+    pub weight: Vec<f32>,
+    pub w_in: usize,
+    pub w_out: usize,
+    pub bias: Option<Vec<f32>>,
+}
+
+/// Everything the ONNX exporter needs from the trained weights.
+pub struct ExportBundle {
+    pub topology: Topology,
+    pub activation: Activation,
+    /// One bias-free projection per one-hot group (Embeddings topology only).
+    pub embeds: Vec<ExportLayer>,
+    /// Deep-trunk hidden layers (Mlp/Embeddings: over the assembled trunk input;
+    /// WideDeep: over the continuous block).
+    pub trunk: Vec<ExportLayer>,
+    /// Deep head → K logits.
+    pub head: ExportLayer,
+    /// Wide path Linear(onehot_total → K), present only for WideDeep.
+    pub wide: Option<ExportLayer>,
+}
+
+impl DeepClf<Inner> {
+    pub fn export_bundle(&self) -> ExportBundle {
+        let ex = |l: &Linear<Inner>| {
+            let [w_in, w_out] = l.weight.dims();
+            ExportLayer {
+                weight: l.weight.val().into_data().to_vec::<f32>().unwrap(),
+                w_in,
+                w_out,
+                bias: l.bias.as_ref().map(|b| b.val().into_data().to_vec::<f32>().unwrap()),
+            }
+        };
+        ExportBundle {
+            topology: self.topology,
+            activation: self.activation,
+            embeds: self.embeds.iter().map(ex).collect(),
+            trunk: self.trunk.iter().map(ex).collect(),
+            head: ex(&self.head),
+            wide: self.wide.first().map(ex),
+        }
+    }
+}

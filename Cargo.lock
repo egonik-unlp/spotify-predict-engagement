@@ -4049,6 +4049,7 @@ dependencies = [
  "burn",
  "clap",
  "lensing-core",
+ "lensing-onnx",
  "serde",
  "serde_json",
 ]

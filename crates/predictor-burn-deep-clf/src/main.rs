@@ -6,6 +6,7 @@
 //! auc, brier) the server trusts verbatim.
 
 mod model;
+mod onnx_export;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -42,6 +43,14 @@ enum Command {
         model: PathBuf,
         #[arg(long)]
         input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Export the trained model as a portable `model.onnx` (binary only):
+    /// input = assembled feature vector, output = P(class 1), shape [N, 1].
+    Export {
+        #[arg(long)]
+        model: PathBuf,
         #[arg(long)]
         output: PathBuf,
     },
@@ -96,6 +105,7 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Train { dataset, output, hyperparams } => train(dataset, output, hyperparams),
         Command::Predict { model, input, output } => predict(model, input, output),
+        Command::Export { model, output } => export(model, output),
     }
 }
 
@@ -315,6 +325,19 @@ fn train(dataset_dir: PathBuf, run_dir: PathBuf, hp_path: PathBuf) -> Result<()>
     let (y_all, classes, k) = encode_labels(&ds.target);
     anyhow::ensure!(k >= 2, "classification needs >= 2 classes, target has {k}");
 
+    // Persist the column layout so `export` can rebuild the Gather indices
+    // without the dataset (predict reconstructs it from the input manifest).
+    let groups_json: Vec<serde_json::Value> = layout
+        .groups
+        .iter()
+        .map(|(name, idx)| json!({"name": name, "idx": idx}))
+        .collect();
+    std::fs::write(
+        run_dir.join("layout.json"),
+        serde_json::to_vec(&json!({
+            "n_cols": n_cols, "cont_idx": layout.cont_idx, "groups": groups_json}))?,
+    )?;
+
     let group_names: Vec<&str> = layout.groups.iter().map(|(g, _)| g.as_str()).collect();
     emit(json!({"event":"log","msg":format!(
         "dataset {}: {} train / {} test rows, {} cols → {} continuous + {} one-hot in {} groups {:?}",
@@ -485,6 +508,73 @@ fn predict(model_dir: PathBuf, input_dir: PathBuf, output: PathBuf) -> Result<()
     }
     std::fs::write(&output, serde_json::to_vec(&rows)?)
         .with_context(|| format!("write {}", output.display()))?;
+    emit(json!({"event":"done"}));
+    Ok(())
+}
+
+// ----------------------------------------------------------------------------
+// Export (ONNX) — binary only
+// ----------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct LayoutFile {
+    n_cols: usize,
+    cont_idx: Vec<usize>,
+    groups: Vec<LayoutGroup>,
+}
+
+#[derive(Deserialize)]
+struct LayoutGroup {
+    #[allow(dead_code)]
+    name: String,
+    idx: Vec<usize>,
+}
+
+fn export(model_dir: PathBuf, output: PathBuf) -> Result<()> {
+    let hp: Hyperparams = serde_json::from_str(
+        &std::fs::read_to_string(model_dir.join("hyperparams.json"))
+            .context("read hyperparams.json from model dir")?,
+    )
+    .context("parse hyperparams.json")?;
+    // `meta.json` is not copied into a promoted model dir (the server excludes
+    // it on promotion); read the binary-only contract from the frozen contract.
+    let contract: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(model_dir.join("contract.json"))
+            .context("read contract.json from model dir")?,
+    )?;
+    let task = contract["target"]["task"].as_str().unwrap_or("");
+    anyhow::ensure!(
+        task == "binary",
+        "ONNX export supports binary classifiers only; target task is {task:?}"
+    );
+    let k = 2usize;
+    let lf: LayoutFile = serde_json::from_str(
+        &std::fs::read_to_string(model_dir.join("layout.json"))
+            .context("read layout.json from model dir")?,
+    )
+    .context("parse layout.json")?;
+    let scaler = ContScaler::load(&model_dir.join("scaler.json"))?;
+
+    let groups: Vec<Vec<usize>> = lf.groups.iter().map(|g| g.idx.clone()).collect();
+    let group_lens: Vec<usize> = groups.iter().map(|v| v.len()).collect();
+    let arch = ArchConfig {
+        n_cont: lf.cont_idx.len(),
+        group_lens: group_lens.clone(),
+        embed_dims: embed_dims(&group_lens, hp.embed_dim),
+        hidden: hp.hidden.clone(),
+        k,
+        dropout: hp.dropout,
+        activation: hp.activation,
+        topology: hp.topology,
+    };
+    let m = model::load(&model_dir.join("model"), &arch)?;
+    let bundle = m.export_bundle();
+    onnx_export::write_onnx(
+        &lf.cont_idx, &groups, &scaler.mean, &scaler.std, &bundle, lf.n_cols, &output,
+    )?;
+    emit(json!({"event":"log","msg":format!(
+        "exported model.onnx: burn-deep-classifier topology {}, {} cols, binary P(class=1)",
+        hp.topology.name(), lf.n_cols)}));
     emit(json!({"event":"done"}));
     Ok(())
 }

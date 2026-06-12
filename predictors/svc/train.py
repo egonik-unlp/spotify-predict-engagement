@@ -92,6 +92,27 @@ def predict(model_dir: Path, input_dir: Path, output: Path) -> None:
     clf.emit({"event": "done"})
 
 
+def export(model_dir: Path, output: Path) -> None:
+    """Contract export: a single `model.onnx` whose input is the assembled
+    feature vector and whose output is P(class=1), shape [N, 1] (binary only).
+    The StandardScaler + the SVC's Platt-calibrated probabilities are baked into
+    the graph by skl2onnx, so the input stays the raw assembled vector."""
+    import onnx_common
+    # Derive the class count from the model itself — `meta.json` is not copied
+    # into a promoted model dir (the server excludes it on promotion).
+    model = joblib.load(model_dir / "model.joblib")
+    k = len(model.steps[-1][1].classes_)
+    if k != 2:
+        raise SystemExit(
+            f"ONNX export supports binary classifiers only; this model has {k} classes")
+    n_cols = int(model.steps[0][1].n_features_in_)
+    onx = onnx_common.sklearn_binary_classifier(model, n_cols)
+    onnx_common.save(onx, output)
+    clf.emit({"event": "log", "msg": "exported model.onnx: svc "
+              f"({n_cols} features, scaler + SVM baked in) binary P(class=1)"})
+    clf.emit({"event": "done"})
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -103,9 +124,14 @@ def main() -> None:
     pr.add_argument("--model", required=True, type=Path)
     pr.add_argument("--input", required=True, type=Path)
     pr.add_argument("--output", required=True, type=Path)
+    ex = sub.add_parser("export")
+    ex.add_argument("--model", required=True, type=Path)
+    ex.add_argument("--output", required=True, type=Path)
     args = ap.parse_args()
     if args.cmd == "train":
         train(args.dataset, args.output, args.hyperparams)
+    elif args.cmd == "export":
+        export(args.model, args.output)
     else:
         predict(args.model, args.input, args.output)
 

@@ -816,6 +816,7 @@ description = "Standardized linear classifier (logistic / multinomial softmax) â
 command = "predictors/.venv/bin/python"
 args = ["predictors/logistic/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
 predict_args = ["predictors/logistic/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+export_args = ["predictors/logistic/train.py", "export", "--model", "{model}", "--output", "{output}"]
 supports_stop = false
 
 [[predictors.params]]
@@ -850,6 +851,7 @@ description = "Support-vector classifier with probability estimates (Platt scali
 command = "predictors/.venv/bin/python"
 args = ["predictors/svc/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
 predict_args = ["predictors/svc/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+export_args = ["predictors/svc/train.py", "export", "--model", "{model}", "--output", "{output}"]
 supports_stop = false
 
 [[predictors.params]]
@@ -1247,6 +1249,7 @@ description = "Ordered gradient boosting with symmetric (oblivious) trees optimi
 command = "predictors/.venv/bin/python"
 args = ["predictors/catboost-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
 predict_args = ["predictors/catboost-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+export_args = ["predictors/catboost-classifier/train.py", "export", "--model", "{model}", "--output", "{output}"]
 supports_stop = false
 
 [[predictors.params]]
@@ -1371,6 +1374,7 @@ description = "Feed-forward net whose hidden layers taper geometrically (top_wid
 command = "predictors/.venv/bin/python"
 args = ["predictors/pyramid-mlp-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
 predict_args = ["predictors/pyramid-mlp-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+export_args = ["predictors/pyramid-mlp-classifier/train.py", "export", "--model", "{model}", "--output", "{output}"]
 supports_stop = false
 
 [[predictors.params]]
@@ -1437,6 +1441,7 @@ description = "Representation-aware deep classifier. Splits features into a stan
 command = "target/release/predictor-burn-deep-clf"
 args = ["train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
 predict_args = ["predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+export_args = ["export", "--model", "{model}", "--output", "{output}"]
 supports_stop = true
 
 [[predictors.params]]

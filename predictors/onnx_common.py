@@ -215,3 +215,75 @@ def positive_class_proba(model: onnx.ModelProto) -> onnx.ModelProto:
         model.opset_import.append(helper.make_opsetid("", OPSET))
     onnx.checker.check_model(model)
     return model
+
+
+def sklearn_binary_classifier(model, n_cols: int) -> onnx.ModelProto:
+    """Convert an sklearn binary classifier (or a Pipeline ending in one) to the
+    single-output `[N, 1]` P(class 1) contract via skl2onnx. A StandardScaler in
+    the pipeline is converted into the graph too, so the ONNX input stays the raw
+    assembled feature vector. `zipmap=False` keeps the probabilities as a plain
+    `[N, 2]` tensor (not a sequence-of-maps) so `positive_class_proba` can gather
+    the positive column."""
+    from skl2onnx import convert_sklearn
+    from skl2onnx.common.data_types import FloatTensorType
+
+    onx = convert_sklearn(
+        model,
+        initial_types=[(INPUT, FloatTensorType([None, n_cols]))],
+        options={"zipmap": False},
+        target_opset=OPSET,
+    )
+    return positive_class_proba(onx)
+
+
+def catboost_binary_classifier(cbm_path, scratch_dir) -> onnx.ModelProto:
+    """Convert a CatBoost binary classifier (`model.cbm`) to the `[N, 1]`
+    P(class 1) contract. CatBoost's native ONNX export emits
+    `TreeEnsembleClassifier → ZipMap`, where the ZipMap turns the raw `[N, 2]`
+    probability tensor into a sequence-of-maps that doesn't fit the contract.
+    We bypass the ZipMap: rename the input to the canonical `input`, drop the
+    ZipMap node, and gather the positive column straight off the pre-ZipMap
+    probability tensor. (onnxmltools' `convert_catboost` is unusable here — it
+    trips a CatBoost metadata-serialization bug.)"""
+    from pathlib import Path
+
+    from catboost import CatBoostClassifier
+
+    model = CatBoostClassifier()
+    model.load_model(str(cbm_path))
+    native = Path(scratch_dir) / "_catboost_native.onnx"
+    model.save_model(
+        str(native),
+        format="onnx",
+        export_parameters={
+            "onnx_domain": "ai.catboost",
+            "onnx_model_version": 1,
+            "onnx_doc_string": "lensing catboost-classifier",
+            "onnx_graph_name": "catboost",
+        },
+    )
+    onx = onnx.load(str(native))
+    native.unlink(missing_ok=True)
+    # CatBoost emits an old IR version under which every initializer must also be
+    # a graph input; bump it so the appended `pos_class_idx` initializer is legal.
+    onx.ir_version = 7
+    g = onx.graph
+
+    old_input = g.input[0].name
+    for node in g.node:
+        node.input[:] = [INPUT if x == old_input else x for x in node.input]
+    g.input[0].name = INPUT
+
+    zipmaps = [n for n in g.node if n.op_type == "ZipMap"]
+    assert len(zipmaps) == 1, f"expected one ZipMap, got {len(zipmaps)}"
+    prob_tensor = zipmaps[0].input[0]
+    g.node.remove(zipmaps[0])
+
+    g.initializer.append(numpy_helper.from_array(np.asarray([1], dtype=np.int64), "pos_class_idx"))
+    g.node.append(helper.make_node("Gather", [prob_tensor, "pos_class_idx"], [OUTPUT], axis=1))
+    del g.output[:]
+    g.output.append(helper.make_tensor_value_info(OUTPUT, TensorProto.FLOAT, ["N", 1]))
+    if not any((op.domain or "") == "" for op in onx.opset_import):
+        onx.opset_import.append(helper.make_opsetid("", OPSET))
+    onnx.checker.check_model(onx)
+    return onx
