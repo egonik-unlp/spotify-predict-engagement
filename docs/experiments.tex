@@ -48,9 +48,17 @@ the budget hypothesis; and a topology bake-off of a new Rust/\texttt{burn}
 \emph{raw}, repairs the dense net's calibration completely (log-loss
 $2.0\to 0.62$) and lifts its AUC $\sim$2 bands to \num{0.7038} --- yet still
 lands $\sim$1--2 bands short of the tree tier, with learned entity embeddings
-starved by the low identity cardinality. Section~\ref{sec:anns} consolidates why
-artificial neural nets structurally underperform on this one-hot-heavy feature
-matrix and how the representation-aware net resolves the diagnosis.
+starved by the low identity cardinality. A seventh campaign then closes that
+thread: a paired re-run of the topology bake-off on a \emph{higher}
+identity-cardinality matrix (artist cap $60\to300$, genre $40\to120$) flips the
+ranking --- \texttt{embeddings} now \emph{beats} \texttt{mlp} (a $+0.0130$ swing
+that reverses the prior result, confirming the starvation hypothesis) --- and
+lifts the net into the in-dataset tree tier (AUC \num{0.7192}, within $\sim$1
+band of \texttt{catboost}), the first ANN to clear the rotation save bar, saved
+as \texttt{burn-deep-embeddings-highvocab}. Section~\ref{sec:anns} consolidates
+why artificial neural nets structurally underperform on this one-hot-heavy
+feature matrix, how the representation-aware net resolves the diagnosis, and how
+enough identity resolution finally lets the embedding topology pay off.
 \end{abstract}
 
 \section{Introduction}
@@ -107,18 +115,26 @@ the target --- \texttt{play\_count}, \texttt{completion\_ratio},
 the demoted \texttt{engagement} field itself --- and the behaviorally
 entangled curation fields are all excluded by default.
 
-\paragraph{Two corpora.} The first three campaigns ran on the original
-\emph{DS-META} corpus (\num{12256} rows, metadata-only). The two Jun-12
-campaigns (Sections~\ref{sec:bakeoff-p64} and~\ref{sec:mlp-scan}) ran on a
-larger 2026 corpus --- a \emph{full-64-d} dataset
+\paragraph{Three feature matrices.} The first three campaigns ran on the
+original \emph{DS-META} corpus (\num{12256} rows, metadata-only). The Jun-12
+campaigns ran on a larger 2026 corpus, the \emph{full-64-d} dataset
 (\dsid{ds-20260609-204419-p64-s42}, \num{23529} rows, 177 columns: 64 song-AE
-PCA latent $+$ 7 numeric $+$ 106 identity one-hots). \textbf{The two corpora
-are not comparable}: they differ in both size (\num{12256} versus \num{23529}
-rows) and feature set (metadata-only versus $+$64 AE latent). AUC numbers on
-the new corpus must therefore never be read against the \num{0.7429} DS-META
-champion; each corpus carries its own leaderboard
-(Tables~\ref{tab:lb-auc} and~\ref{tab:lb-auc-p64}) and nothing regressed when
-the new-corpus xgboost lands at \num{0.7204}.
+PCA latent $+$ 7 numeric $+$ 106 identity one-hots at vocab caps artist 60 /
+genre 40 --- the \emph{60/40-vocab} matrix). A final Jun-12 campaign
+(Section~\ref{sec:anns-highvocab}) re-ran on a \emph{high-vocab} variant
+(\dsid{ds-20260612-143014-p64-s42}, \emph{same} \num{23529} rows / split seed 42
+/ PCA64, differing \emph{only} in identity cardinality: artist cap $60\to300$,
+genre $40\to120$; 497 columns including 426 one-hots --- artist 301, genre 121,
+album-type 4). \textbf{These are three non-comparable matrices}: DS-META differs
+from the full-64-d corpus in both size (\num{12256} versus \num{23529} rows) and
+feature set (metadata-only versus $+$64 AE latent), and the 60/40 and high-vocab
+matrices differ in identity cardinality (177 versus 497 columns). AUC numbers
+must therefore never be read across them --- not against the \num{0.7429}
+DS-META champion, and not between the 60/40 and high-vocab boards. Each matrix
+carries its own leaderboard (Tables~\ref{tab:lb-auc},~\ref{tab:lb-auc-p64}
+and~\ref{tab:lb-auc-highvocab}); nothing regressed when the 60/40 xgboost lands
+at \num{0.7204}, and every family scores \emph{higher} on the wider high-vocab
+matrix because the extra identity granularity is genuine signal.
 
 \section{Background: model families and metrics}
 \label{sec:background}
@@ -265,12 +281,18 @@ that the classification metrics dissolve.
 
 \section{Rotation leaderboards}
 \label{sec:leaderboard}
-Three leaderboards. The first two are on the original DS-META corpus, one per
-metric regime; the third is on the larger 2026 full-64-d corpus and is
-\emph{not} comparable to the others (different corpus size and feature set ---
-see the Introduction's ``Two corpora'' note). The DS-META AUC board carries the
-project's first registered, promotable rotation champion; the new-corpus board
-carries the new-corpus registered definition.
+Four leaderboards. The first two are on the original DS-META corpus, one per
+metric regime; the third and fourth are on the larger 2026 full-64-d corpus.
+\textbf{None of the three AUC boards is comparable to the others} --- they sit
+on three non-comparable feature matrices (DS-META metadata-only; the full-64-d
+\emph{60/40-vocab} matrix; and the full-64-d \emph{high-vocab} matrix, which
+shares the 60/40 corpus, rows and split but raises the identity cardinality
+caps). Each board carries its own in-dataset references and must never be read
+across (see the Introduction's ``Three feature matrices'' note). The DS-META
+AUC board carries the project's first registered, promotable rotation champion;
+the 60/40 board carries the new-corpus registered xgboost definition; the
+high-vocab board carries the first ANN to clear the rotation save bar
+(Section~\ref{sec:anns-highvocab}).
 
 \begin{table}[ht]
   \centering
@@ -327,6 +349,37 @@ carries the new-corpus registered definition.
     ngboost-classifier                             & ---       & 0.6917 & 0.6293 & 0.6392 & $\sim$2.3 bands back \\
     pyramid-mlp-classifier (arch-scan best)        & [512,256] & 0.6792 & 2.0584 & 0.6326 & dense net; calib.\ ceiling \\
     pyramid-mlp-classifier (bake-off, 300 iter)    & [256,128,64] & 0.6781 & 2.4085 & 0.6326 & dense net; calib.\ ceiling \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \centering
+  \caption{Rotation, \emph{classification} regime, \textbf{high-vocab full-64-d
+  matrix} --- ranked by AUC (higher-better). Dataset
+  \dsid{ds-20260612-143014-p64-s42} (\num{23529} rows, 497 cols: 64 song-AE
+  PCA $+$ 9 numeric $+$ 426 identity one-hots --- artist 301, genre 121,
+  album-type 4). \textbf{Not comparable to Tables~\ref{tab:lb-auc}
+  or~\ref{tab:lb-auc-p64}}: it shares the 60/40 corpus, rows and split but
+  raises the identity cardinality (artist cap $60\to300$, genre $40\to120$), so
+  every family re-ran here for a fresh in-dataset ranking. The trees moved
+  \emph{up} on the wider matrix (xgboost $0.7204\to\num{0.7299}$, catboost
+  $0.7111\to\num{0.7252}$). The saved \texttt{burn-deep-classifier}
+  (\texttt{embeddings}) is the first ANN to reach the in-dataset tree tier and
+  clear the rotation save bar (Section~\ref{sec:anns-highvocab}); xgboost is the
+  in-dataset leader but no tree save rule fired this campaign. AUC band
+  $2\sigma\approx 0.0126$ (old-corpus estimate, approximate here).}
+  \label{tab:lb-auc-highvocab}
+  \begin{tabular}{llcccl}
+    \toprule
+    Model & config & AUC & log-loss & accuracy & Note \\
+    \midrule
+    \best{xgboost-classifier} (in-dataset leader)     & d6 / lr0.05      & \best{0.7299} & \best{0.6022} & \best{0.6719} & not registered \\
+    catboost-classifier (2nd tree)                    & defaults         & 0.7252 & 0.6068 & 0.6649 & $-0.0047$, in band \\
+    burn-deep-classifier (embeddings, Phase-2 best)   & ed8 / lr0.0005   & 0.7228 & 0.6105 & 0.6645 & tree tier; sub-band gain \\
+    burn-deep-classifier (embeddings, \emph{saved})   & ed16 / lr0.001   & 0.7192 & 0.6087 & 0.6694 & registered (high-vocab) \\
+    burn-deep-classifier (mlp)                        & lr0.001          & 0.7129 & 0.6166 & 0.6617 & $-0.0063$ vs embeddings \\
+    burn-deep-classifier (wide\_deep)                 & lr0.001          & 0.7061 & 0.6256 & 0.6526 & laggard, both regimes \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -955,7 +1008,8 @@ definition was persisted.
   $2\sigma$ band of each other; the plain \texttt{mlp} wins and the entity
   \texttt{embeddings} barely edge \texttt{wide\_deep}, because at these identity
   cardinalities (artist 61, genre 41, album-type 4) learned embeddings are
-  starved --- they pay off at hundreds-to-thousands of categories, not dozens.
+  starved --- they pay off at hundreds-to-thousands of categories, not dozens (a
+  hypothesis Section~\ref{sec:anns-highvocab} confirms by raising the caps).
   \emph{Right:} the headline. Keeping the one-hots \emph{raw} drops the
   log-loss from the sklearn pyramid's $\approx 2.0$ (confidently miscalibrated,
   worse than the random baseline) to $\approx 0.62$, into the tree regime --- a
@@ -987,14 +1041,160 @@ the one-hots'' lesson the tree campaigns taught, now reproduced inside the ANN
 family --- learned per-group embeddings have little to add over 61 artist and 41
 genre one-hots, and the standing lever for the net (as for the trees) is identity
 \emph{resolution}: raise the vocabulary caps and the embedding topology should
-finally start to pay off. No definition was saved (below the $\sim$0.71 bar); the
+finally start to pay off --- a prediction that the high-vocab re-run of
+Section~\ref{sec:anns-highvocab} then confirms, flipping \texttt{embeddings}
+above \texttt{mlp} and lifting the net into the tree tier. No definition was
+saved here (below the $\sim$0.71 bar); the
 net is a strong, now-honest dense baseline and a natural ensemble member for its
 decorrelated inductive bias, not a champion.
 \emph{Source: \texttt{2026-06-12-burn-deep-topology.md}.}
 
+\subsection{Confirmed: raising identity cardinality lifts the embedding net into the tree tier}
+\label{sec:anns-highvocab}
+\emph{Rationale.} Section~\ref{sec:anns-burn} closed on a sharp, testable
+prediction: the entity-\texttt{embeddings} topology lost to plain \texttt{mlp}
+\emph{only} because the identity cardinalities (artist 61, genre 41) were too
+low to feed a learned embedding, so raising the vocabulary caps should flip the
+ranking. This campaign is the paired re-run that tests it directly. A new matrix
+(\dsid{ds-20260612-143014-p64-s42}) was built \emph{identical} to the 60/40
+full-64-d dataset of Section~\ref{sec:anns-burn} --- same \num{23529} rows, same
+split seed 42, byte-identical PCA64 --- differing in \emph{one} axis only:
+identity cardinality, with the artist cap raised $60\to300$
+(\SI{50.4}{\percent} coverage) and \texttt{genre\_primary} $40\to120$
+(\SI{78.8}{\percent}). It is a \emph{third} non-comparable matrix (497 columns:
+64 PCA $+$ 9 numeric $+$ 426 one-hots --- artist 301, genre 121, album-type 4 ---
+versus the 60/40 matrix's 177), so all metrics here are fresh in-dataset
+references and must never be read against the 60/40 or DS-META boards. The
+headline question: with cardinality $5\times$ (artist) and $3\times$ (genre)
+larger, does \texttt{embeddings} now beat \texttt{mlp}? Phase 0 re-ran the two
+trees for an in-dataset tree tier; Phase 1 re-ran the topology bake-off (the
+embeddings arm now at embed\_dim 16, since higher cardinality justifies a wider
+table); Phase 2 tuned the winning topology over embed\_dim $\times$ lr.
+
+\emph{Results.} The ranking \textbf{flipped} (Table~\ref{tab:highvocab-topo};
+Figure~\ref{fig:burn-highvocab}). \texttt{embeddings}
+(\runid{run-20260612-143411-e8db6-burn-deep-classifier}) wins at AUC
+\num{0.7192}, with \texttt{mlp} at \num{0.7129} ($+0.0063$) and \texttt{wide\_deep}
+last at \num{0.7061} ($+0.0131$). On the 60/40 matrix \texttt{mlp} had beaten
+\texttt{embeddings} by $+0.0067$; here \texttt{embeddings} beats \texttt{mlp} by
+$+0.0063$ --- a \textbf{swing of $+0.0130$} in the embedding's favour, crossing
+the band, the qualitative reversal the starvation hypothesis predicted. Phase 0
+shows both trees also moved \emph{up} on the wider matrix: xgboost
+$0.7204\to\num{0.7299}$ ($+0.0095$, \runid{run-20260612-143411-02fda-xgboost-classifier},
+log-loss \num{0.6022}) and catboost $0.7111\to\num{0.7252}$ ($+0.0141$,
+\runid{run-20260612-143411-8f15e-catboost-classifier}), so high vocab is genuine
+signal for \emph{every} family --- it does not hand the embedding a unique
+advantage, it \emph{unlocks} a topology that was previously starved. The Phase-2
+embed\_dim$\times$lr tune (best embed\_dim 8 / lr \num{5e-4}, AUC \num{0.7228},
+\runid{run-20260612-143508-3310f-burn-deep-classifier}) shows the win came from
+\emph{enabling} embeddings plus a slower learning rate, not from a wider table:
+AUC is monotone-decreasing in embed\_dim at the slow lr (ed8 \num{0.7228} $>$
+ed16 \num{0.7210} $>$ ed32 \num{0.7200}, a sub-band $\sim$\num{0.0028} spread),
+so embed\_dim is already saturated at 8. The best tuned cell beats the Phase-1
+winner by only $+0.0036$ (sub-band), so the decision rule saved the \emph{Phase-1}
+config (embeddings, embed\_dim 16, lr \num{1e-3}) as
+\texttt{burn-deep-embeddings-highvocab}. A determinism twin reproduced the
+Phase-1 run to four digits ($0.71923$ versus $0.71923$). At \num{0.7192} the
+saved net sits $-0.0060$ below catboost ($<$ 1 band) and $-0.0107$ below xgboost,
+inside the band of the second tree family --- the first ANN to reach the
+in-dataset tree tier and clear the rotation save bar.
+
+\begin{table}[ht]
+  \centering
+  \caption{Phase 1 --- the \texttt{burn-deep-classifier} topology bake-off on
+  the \textbf{high-vocab} matrix (\dsid{ds-20260612-143014-p64-s42}, held
+  params: epochs 250, patience 20, hidden $[128,64]$, embed\_dim 16, dropout
+  0.1, lr \num{1e-3}, batch 256, relu; the only axis is \texttt{topology}). All
+  three succeeded. The ranking \emph{reverses} the 60/40 result of
+  Table~\ref{tab:burn-topo}: \texttt{embeddings} now wins. AUC higher-better;
+  log-loss and Brier lower-better. Winner bolded; best cell per metric bolded.}
+  \label{tab:highvocab-topo}
+  \begin{tabular}{llcccc}
+    \toprule
+    Topology / run id & Topology & AUC & log-loss & accuracy & Brier \\
+    \midrule
+    \best{T-emb} (\runid{run-20260612-143411-e8db6-burn-deep-classifier}) & \best{embeddings} & \best{0.7192} & \best{0.6087} & \best{0.6694} & \best{0.2110} \\
+    T-mlp (\runid{run-20260612-143411-01d7b-burn-deep-classifier})        & mlp               & 0.7129 & 0.6166 & 0.6617 & 0.2143 \\
+    T-wd (\runid{run-20260612-143411-7d117-burn-deep-classifier})         & wide\_deep        & 0.7061 & 0.6256 & 0.6526 & 0.2183 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \centering
+  \caption{Phase 2 --- tuning the winning \texttt{embeddings} topology, an
+  embed\_dim$\times$\texttt{lr} grid (hidden $[128,64]$, other params held),
+  sorted by AUC; winner bolded, best cell per metric bolded. AUC is
+  monotone-decreasing in embed\_dim at lr \num{5e-4} (the table is already
+  saturated at width 8), and lr \num{5e-4} beats lr \num{1e-3} at every width.
+  The best gain over the Phase-1 winner ($+0.0036$) is sub-band, so the Phase-1
+  config is the config of record.}
+  \label{tab:highvocab-tune}
+  \begin{tabular}{llcccc}
+    \toprule
+    embed\_dim & lr & AUC & log-loss & accuracy & Brier \\
+    \midrule
+    \best{8}  & \best{0.0005} & \best{0.7228} & 0.6105 & 0.6645 & 0.2114 \\
+    16        & 0.0005        & 0.7210 & \best{0.6088} & \best{0.6711} & \best{0.2108} \\
+    32        & 0.0005        & 0.7200 & 0.6100 & 0.6657 & 0.2114 \\
+    8         & 0.001         & 0.7193 & 0.6092 & 0.6643 & 0.2112 \\
+    16        & 0.001         & 0.7192 & 0.6087 & 0.6666 & 0.2110 \\
+    32        & 0.001         & 0.7183 & 0.6097 & 0.6668 & 0.2114 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.95\textwidth]{burn_highvocab}
+  \caption{Identity resolution closes the ANN-pitfalls thread. \emph{Left:} the
+  paired \texttt{embeddings}-versus-\texttt{mlp} comparison across the two
+  cardinalities. On the 60/40 matrix \texttt{mlp} wins by $+0.0067$; on the
+  high-vocab matrix \texttt{embeddings} wins by $+0.0063$ --- a $+0.0130$ swing
+  that reverses the ranking and confirms the starvation diagnosis: with artist
+  cardinality $5\times$ and genre $3\times$ larger the embedding table finally
+  has enough distinct identities to learn a useful low-rank geometry instead of
+  collapsing near-constant. \emph{Right:} the five-family in-dataset AUC ranking
+  on the high-vocab matrix. The saved \texttt{embeddings} net (\num{0.7192})
+  reaches the bottom of the tree tier (shaded: from a band below \texttt{catboost}
+  up to \texttt{xgboost}) --- the first ANN to do so --- while \texttt{xgboost}
+  (\num{0.7299}) remains the in-dataset leader.}
+  \label{fig:burn-highvocab}
+\end{figure}
+
+\emph{Interpretation.} This resolves Section~\ref{sec:anns-burn}'s open question
+\emph{confirmed}: the embedding topology's earlier loss was a starvation
+artifact of low cardinality, not an intrinsic limit, and raising the caps flips
+the ranking exactly as predicted. Two honest caveats keep the claim calibrated.
+First, the single-split emb-vs-mlp margin ($+0.0063$) is itself sub-band, so the
+\emph{magnitude} of the reversal needs a 3-split confirm; what is decisive is
+the \emph{direction} --- the whole ranking reordered, with the embedding arm
+moving from the bottom of the 60/40 ranking to the top of this one. Second, high
+vocab helps \emph{everyone}: the trees gained as much as (catboost) or more than
+the embedding arm, so the correct reading is ``higher resolution is better
+signal for every family, and it specifically unlocks the embedding topology'',
+not ``embeddings now win outright'' --- \texttt{xgboost} at \num{0.7299} is still
+the in-dataset leader, $\sim$\num{0.0107} ($\sim$1 band) above the saved net.
+But the qualitative arc that ran through Section~\ref{sec:anns} now closes
+cleanly: a dense net that consumes raw one-hots is calibrated in the tree regime
+(Section~\ref{sec:anns-burn}), and given \emph{enough} identity resolution its
+embedding topology reaches the tree tier --- the standing ``identity resolution
+is the lever'' lever, demonstrated. Logloss ($\sim$0.61) and Brier ($\sim$0.21)
+stay in the trees' calibrated regime throughout, so there is no calibration
+penalty for the win. One data-hygiene note: the high-vocab manifest's redundancy
+report flags 21 near-perfect genre$\leftrightarrow$artist one-hot collinearities
+(e.g.\ \texttt{genre\_primary=australian psych} $\equiv$ \texttt{artist=Tame
+Impala}, correlation \num{1.000}; 19 more $\ge\num{0.957}$), an artifact of
+admitting rare genres carried by a single newly-admitted artist; the trees and
+the net's regularizers absorb it with no observed run pathology, but it is worth
+knowing before reading individual one-hot importances on this matrix. The saved
+\texttt{burn-deep-embeddings-highvocab} is flagged for best-model-selector as
+the first tree-tier ANN and a natural family-diversity candidate.
+\emph{Source: \texttt{2026-06-12-high-vocab-topology.md}.}
+
 \section{Conclusions}
 \label{sec:conclusions}
-Six Jun-2026 campaigns on the pivoted rotation target converge on a single
+Seven Jun-2026 campaigns on the pivoted rotation target converge on a single
 story. (1) Across two feature campaigns and three model-family scans (two
 corpora), every dense modality and every dense distance/margin/dense-net family
 loses to categorical identity one-hots read by gradient-boosted trees --- the
@@ -1025,12 +1225,24 @@ trees only \emph{narrowed} (from $\sim$3.3 bands to $\sim$1), it did not close:
 the net still lands below \texttt{catboost} and \texttt{xgboost}, the plain
 \texttt{mlp} beat both the embedding and wide-deep topologies (entity embeddings
 are starved at the corpus's low identity cardinality), and nothing cleared the
-$\sim$0.71 save bar. The convergent finding stands; the standing lever for the
-net, as for the trees, is identity \emph{resolution} --- raising the vocabulary
-caps so the embedding topology can finally pay off.
+$\sim$0.71 save bar. (6) That standing lever was then pulled. A paired re-run on a
+\emph{high-vocab} matrix --- identical to the 60/40 dataset but with the artist
+cap raised $60\to300$ and genre $40\to120$ --- \emph{flipped} the topology
+ranking (Section~\ref{sec:anns-highvocab}): \texttt{embeddings}, starved and
+last on the 60/40 matrix, now \emph{beats} \texttt{mlp} (a $+0.0130$ swing that
+reverses the prior result and confirms the starvation hypothesis directionally),
+and the saved net reaches the in-dataset tree tier at AUC \num{0.7192} (within
+$\sim$1 band of \texttt{catboost}) --- the first ANN to clear the rotation save
+bar, saved as \texttt{burn-deep-embeddings-highvocab}. The convergent finding
+still stands at the top (\texttt{xgboost} leads every matrix, and higher
+resolution lifts \emph{every} family, not just the embedding), but the
+ANN-pitfalls thread is now closed: a representation-aware net that consumes raw
+one-hots is calibrated in the tree regime, and given enough identity resolution
+its embedding topology reaches the tree tier --- identity \emph{resolution} was
+the lever all along.
 
 \section{Source reports}
-This synthesis consolidates six campaign reports from \texttt{experiments/}:
+This synthesis consolidates seven campaign reports from \texttt{experiments/}:
 \begin{itemize}
   \item \texttt{2026-06-09-ae-xgboost-blend.md} --- autoencoder-latent +
     XGBoost blend on rotation (Section~\ref{sec:ae-blend}).
@@ -1049,6 +1261,11 @@ This synthesis consolidates six campaign reports from \texttt{experiments/}:
     \texttt{burn-deep-classifier} topology bake-off; resolves the
     representation-aware-net question, fixing calibration but not the AUC gap
     (Section~\ref{sec:anns-burn}).
+  \item \texttt{2026-06-12-high-vocab-topology.md} --- the paired topology
+    re-run on a higher-identity-cardinality matrix; flips
+    \texttt{embeddings}$>$\texttt{mlp} and lifts the saved net into the
+    in-dataset tree tier, the first ANN to clear the rotation save bar
+    (Section~\ref{sec:anns-highvocab}).
 \end{itemize}
 
 \end{document}

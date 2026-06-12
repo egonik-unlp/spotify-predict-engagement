@@ -416,6 +416,80 @@ def fig_burn_topology():
     save(fig, "burn_topology.pdf")
 
 
+# Fig 10: raising identity cardinality flips the topology ranking and lifts the
+# ANN into the tree tier — the paired re-run on the HIGH-VOCAB matrix.
+# Left: the embeddings-vs-mlp reversal across the two cardinalities (60/40 ->
+# 300/120) — embeddings goes from below mlp to above it (a +0.0130 swing).
+# Right: the five-family AUC ranking on the high-vocab matrix — the saved
+# embeddings net reaches the bottom of the tree tier
+# (2026-06-12-high-vocab-topology.md, Phase 0 + Phase 1 + Findings (i),(iii)).
+def fig_burn_highvocab():
+    # Left panel: the paired emb-vs-mlp comparison across the two matrices.
+    # 60/40 matrix (the prior burn-deep run): mlp beats embeddings by +0.0067.
+    # high-vocab matrix (this run): embeddings beats mlp by +0.0063 — reversal.
+    grp_labels = ["60/40 matrix\n(artist 60, genre 40)", "high-vocab matrix\n(artist 300, genre 120)"]
+    emb = [0.6934, 0.7192]
+    mlp = [0.7001, 0.7129]
+
+    # Right panel: the five-family AUC ranking on the high-vocab matrix.
+    band = 0.0126  # 2-sigma AUC band (old-corpus estimate, approximate here)
+    fam_labels = [
+        "xgboost\n(in-dataset leader)",
+        "catboost",
+        "burn-deep emb\n(Phase-2 best)",
+        "burn-deep emb\n(saved)",
+        "burn-deep mlp",
+        "burn-deep wide_deep",
+    ]
+    fam_auc = [0.7299, 0.7252, 0.7228, 0.7192, 0.7129, 0.7061]
+    fam_colors = [GOOD, GOOD, ACCENT, ACCENT, MUTED, MUTED]
+    tree_floor = 0.7252  # bottom of the in-dataset tree tier (catboost)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.2, 3.5))
+
+    # Left: grouped bars, embeddings vs mlp, across the two cardinalities.
+    x = np.arange(len(grp_labels))
+    w = 0.36
+    b_emb = ax1.bar(x - w / 2, emb, w, color=ACCENT, label="embeddings")
+    b_mlp = ax1.bar(x + w / 2, mlp, w, color=MUTED, label="mlp")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(grp_labels, fontsize=6.8)
+    ax1.set_ylim(0.66, 0.73)
+    ax1.yaxis.set_major_formatter(afmt)
+    ax1.set_ylabel("AUC (P(rotation))")
+    for bars, vals in ((b_emb, emb), (b_mlp, mlp)):
+        for bar, v in zip(bars, vals):
+            ax1.text(bar.get_x() + bar.get_width() / 2, v + 0.0008, f"{v:.4f}",
+                     ha="center", fontsize=6.3)
+    # arrows annotating who wins in each regime
+    ax1.annotate("mlp wins\n($-0.0067$)", xy=(0, 0.704), xytext=(0, 0.722),
+                 ha="center", fontsize=6.5, color=BAD,
+                 arrowprops=dict(arrowstyle="->", color=BAD, lw=0.8))
+    ax1.annotate("embeddings wins\n($+0.0063$)", xy=(1, 0.722), xytext=(1, 0.668),
+                 ha="center", fontsize=6.5, color=GOOD,
+                 arrowprops=dict(arrowstyle="->", color=GOOD, lw=0.8))
+    ax1.set_title("Higher cardinality FLIPS the ranking\n(emb vs mlp, a $+0.0130$ swing)")
+    ax1.legend(loc="lower left", fontsize=6.5)
+
+    # Right: five-family ranking on the high-vocab matrix, tree-tier floor shaded.
+    y = np.arange(len(fam_labels))[::-1]
+    ax2.barh(y, fam_auc, color=fam_colors)
+    ax2.set_yticks(y)
+    ax2.set_yticklabels(fam_labels, fontsize=6.3)
+    ax2.set_xlim(0.69, 0.735)
+    ax2.xaxis.set_major_formatter(afmt)
+    # tree tier: from the band below catboost up to xgboost
+    ax2.axvspan(tree_floor - band, fam_auc[0], color=GOOD, alpha=0.10,
+                label="in-dataset tree tier")
+    ax2.axvline(tree_floor, color=GOOD, ls="--", lw=1.0)
+    for yi, a in zip(y, fam_auc):
+        ax2.text(a + 0.0006, yi, f"{a:.4f}", va="center", fontsize=6.3)
+    ax2.set_xlabel("AUC (P(rotation))")
+    ax2.set_title("The saved embeddings net reaches\nthe bottom of the tree tier")
+    ax2.legend(loc="lower right", fontsize=6.5)
+    save(fig, "burn_highvocab.pdf")
+
+
 if __name__ == "__main__":
     fig_ae_latent_knn()
     fig_svm_mae_vs_r2()
@@ -426,3 +500,4 @@ if __name__ == "__main__":
     fig_mlp_calibration_signature()
     fig_mlp_arch_scan()
     fig_burn_topology()
+    fig_burn_highvocab()

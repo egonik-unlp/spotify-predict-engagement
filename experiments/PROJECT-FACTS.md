@@ -502,6 +502,91 @@ resolution is a DECISION, not an improvisation:
 Additive log of judgment-pass overrides applied via `PUT /api/best-models`
 (the deterministic top-12-by-MAE recompute can't apply these). Newest first.
 
+### 2026-06-12 (latest) — sixth judgment pass after the HIGH-VOCAB topology campaign (`ds-20260612-143014-p64-s42`)
+
+State on entry: group full (12/12), 55 prior exclusions intact, no pins. Recompute was
+fresh (selected_at 2026-06-12T14:35:24 matched the last high-vocab run finish — no manual
+recompute needed). The high-vocab topology campaign (`experiments/2026-06-12-high-vocab-topology.md`)
+landed 11 runs on a THIRD, non-comparable feature matrix `ds-20260612-143014-p64-s42`
+(same 23,529 rows / seed 42 / PCA64 + numerics as the 60/40 full-64-d matrix; identity
+vocab raised to artist 300 / genre 120 → 426 one-hot cols). The deterministic AUC top-12
+seated NINE of the 11 high-vocab runs (xgboost 02fda 0.7299 at rank 3, catboost 8f15e
+0.7252 at rank 4, then SEVEN burn-deep embeddings cells across ranks 5,6,8,9,10,11,12),
+crowding the new-corpus xgboost `xgboost-one`/439d8 down to rank 7 and pushing ngboost +
+the entire OLD-DS-META dense tail (svc ×4 + logistic) OUT of the group — a burn-deep
+near-monoculture (7/12 slots) of one family on one matrix, mostly embed_dim×lr tune cells
+spanning a sub-band 0.7183–0.7228, plus the e8db6/b717e determinism twin. No suspicious
+metrics (n_test 4,706, logloss ~0.61 in the trees' calibrated regime, no leakage
+signature). The group spans THREE non-comparable matrices (OLD DS-META, 60/40 full-64-d,
+HIGH-VOCAB full-64-d); a single AUC sort mixes them — curation can de-dup and restore
+family/matrix-variant diversity but cannot make the cross-matrix ranking like-for-like.
+
+**Excluded (9 new run ids) — verified each against `GET /api/runs` auc/logloss + the
+campaign config table before excluding:**
+
+1. **High-vocab burn-deep family de-dup → kept ONE representative (e8db6).** All 9 high-vocab
+   burn-deep runs are the same family on the same matrix; 7 are embeddings embed_dim×lr tune
+   cells (sub-band 0.7183–0.7228) and the burn binary is near- not bit-deterministic
+   (e8db6 0.71923 vs its twin b717e 0.71919 = ed16/lr0.001, Δ 0.00004 ≈ 0.006 band — NOT a
+   distinct better model). Kept `run-20260612-143411-e8db6-burn-deep-classifier` (embeddings,
+   ed16, lr0.001, **AUC 0.7192**) — the campaign's SAVED Phase-1-winner config
+   (`burn-deep-embeddings-highvocab`, the FIRST ANN to clear the rotation save bar) per the
+   runner's decision rule — as the single high-vocab burn-deep representative. Excluded the
+   other 8: the determinism twin `b717e` (ed16/lr0.001, 0.71919), the Phase-2 best `3310f`
+   (ed8/lr0.0005, 0.7228) and the rest of the embed_dim×lr grid `d9bf7` (ed16/lr0.0005, 0.7210),
+   `75804` (ed32/lr0.0005, 0.7200), `0b77d` (ed8/lr0.001, 0.7193), `5f0f2` (ed32/lr0.001, 0.7183),
+   plus the two non-embeddings topologies `01d7b` (mlp, 0.7129) and `7d117` (wide_deep, 0.7061).
+   NOTE: I kept the SAVED config (e8db6) over the marginally higher Phase-2 cell 3310f
+   (0.7228, +0.0036, in-band) — the saved-definition config is the canonical representative;
+   the +0.0036 edge is sub-band and the per-arm topology margins are 3-split-confirm-pending.
+   e8db6's model record is NOT flagged `promoted`, so it cannot be PINNED — excluding its 8
+   siblings keeps it auto-seated without a pin (same mechanism as the prior burn-deep pass).
+2. **60/40 burn-deep representative superseded (`6575a`).** `run-20260612-140211-6575a-burn-deep-classifier`
+   (the prior pass's single burn-deep rep: mlp/lr0.0005/[128,64] on the 60/40 matrix
+   `ds-20260609-204419-p64-s42`, **AUC 0.7038**) is the weaker matrix-variant of a family whose
+   better representative (e8db6, 0.7192, high-vocab) is now seated. Keeping both would put the
+   same family twice across two near-identical matrices (same corpus/rows/split, vocab the only
+   difference) and — per the projection — would re-seat 6575a at rank 7, displacing a distinct
+   dense-tail family. Excluded so burn-deep holds exactly one (best-matrix) slot. Revisit
+   trigger: unexclude 6575a only if the 60/40 matrix becomes the active comparison axis again.
+
+**De-dup judgment that did NOT trigger an exclusion (kept, stated for audit):** the group now
+holds catboost on BOTH the high-vocab matrix (`8f15e`, 0.7252, rank 4) and the 60/40 matrix
+(`c7ef6`, 0.7111, rank 7). Unlike burn-deep, catboost is only a 2-cell family (no monoculture)
+and excluding c7ef6 would free a slot that only the documented-worst svc-sigmoid (0.6255) could
+backfill — a strictly worse outcome. Both catboost cells are distinct, non-redundant tree
+members on distinct matrices, so both are KEPT for cross-matrix tree representation.
+
+**Crowded-out distinct families restored (no action needed beyond the burn-deep thinning):**
+removing the 8-cell burn-deep flood let the new-corpus xgboost champion `xgboost-one`/439d8
+(0.7204) rise to rank 5, ngboost `d725b` (0.6917) re-seat at rank 8, and the OLD-DS-META dense
+tail (svc-poly 848b8 0.6855, logistic 8e4d9 0.6762, svc-rbf a704f 0.6722, svc-linear 45798 0.6363)
+re-fill ranks 9–12 — restoring the 7-family diversity the deterministic sort had collapsed.
+The documented-worst svc-sigmoid (53bb5, 0.6255) now falls to candidate #13 and naturally
+drops OUT (the group is full at 12 with strictly better-diversified members) — no longer needs
+a standing "leave alone" note. All 55 prior exclusions left intact; no pins, no unexcludes.
+
+**Result: group = 12 entries, 7 distinct predictor families across 3 non-comparable matrices,
+64 total exclusions, no pins.** One representative per (family, matrix-variant) except catboost
+(kept on both matrices, justified above). The high-vocab board's in-dataset leader is the
+high-vocab xgboost 02fda (0.7299, rank 3); the saved high-vocab ANN e8db6 (0.7192) holds the
+burn-deep/ANN-diversity slot at rank 6.
+
+| rank | model | predictor | AUC | matrix | note |
+|---|---|---|---|---|---|
+| 1 | best-xgboost-classifier-…-627d6 | xgboost-classifier | 0.7429 | OLD DS-META | registered DS-META champion `xgboost-classifier-rotation` (s42); cross-matrix |
+| 2 | best-xgboost-classifier-…-fffa4 | xgboost-classifier | 0.7350 | OLD p64 (178) | AE-latent+metadata dilution arm; cross-matrix |
+| 3 | best-xgboost-classifier-…-02fda | xgboost-classifier | 0.7299 | HIGH-VOCAB (497) | high-vocab in-dataset champion |
+| 4 | best-catboost-classifier-…-8f15e | catboost-classifier | 0.7252 | HIGH-VOCAB (497) | 2nd tree family, high-vocab (−0.0047 vs xgboost, in-band) |
+| 5 | best-xgboost-classifier-…-439d8 | xgboost-classifier | 0.7204 | 60/40 full-64-d (177) | new-corpus champion; backs the `xgboost-one` definition |
+| 6 | best-burn-deep-classifier-…-e8db6 | burn-deep-classifier | 0.7192 | HIGH-VOCAB (497) | SAVED high-vocab ANN config (`burn-deep-embeddings-highvocab`); ANN-diversity slot; first ANN over the save bar |
+| 7 | best-catboost-classifier-…-c7ef6 | catboost-classifier | 0.7111 | 60/40 full-64-d (177) | 2nd tree family on 60/40 matrix; distinct, kept |
+| 8 | best-ngboost-classifier-…-d725b | ngboost-classifier | 0.6917 | 60/40 full-64-d (177) | 3rd-tier family, ~2.3 bands back |
+| 9 | best-svc-…-848b8 | svc (poly d3) | 0.6855 | OLD DS-META | dense-tail member; cross-matrix |
+| 10 | best-logistic-…-8e4d9 | logistic | 0.6762 | OLD DS-META | dense-tail member; cross-matrix |
+| 11 | best-svc-…-a704f | svc (rbf) | 0.6722 | OLD DS-META | dense-tail member |
+| 12 | best-svc-…-45798 | svc (linear) | 0.6363 | OLD DS-META | dense-tail member |
+
 ### 2026-06-12 (later) — fifth judgment pass after the burn-deep-classifier topology campaign (full-64-d, new corpus)
 
 State on entry: group full (12/12), 41 prior exclusions intact, no pins. Recompute was
