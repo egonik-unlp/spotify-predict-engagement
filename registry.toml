@@ -1237,3 +1237,193 @@ type = "float"
 default = 0.15
 min = 0.05
 max = 0.5
+
+[[predictors]]
+name = "catboost-classifier"
+display_name = "CatBoost Classifier"
+language = "Python"
+framework = "CatBoost"
+description = "Ordered gradient boosting with symmetric (oblivious) trees optimizing Logloss / MultiClass. Emits calibrated class probabilities; scored by AUC / logloss / accuracy. Pair with a classification-task domain."
+command = "predictors/.venv/bin/python"
+args = ["predictors/catboost-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/catboost-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "iterations"
+label = "boosting iterations"
+type = "int"
+default = 500
+min = 10
+max = 10000
+
+[[predictors.params]]
+name = "depth"
+label = "tree depth"
+type = "int"
+default = 6
+min = 1
+max = 16
+
+[[predictors.params]]
+name = "learning_rate"
+label = "learning rate"
+type = "float"
+default = 0.05
+min = 0.001
+max = 1.0
+
+[[predictors.params]]
+name = "l2_leaf_reg"
+label = "L2 leaf regularization"
+type = "float"
+default = 3.0
+min = 0.0
+max = 1000.0
+
+[[predictors.params]]
+name = "subsample"
+label = "row subsample (Bernoulli bootstrap)"
+type = "float"
+default = 0.8
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "border_count"
+label = "feature split count"
+type = "int"
+default = 254
+min = 1
+max = 65535
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
+
+[[predictors]]
+name = "ngboost-classifier"
+display_name = "NGBoost Classifier"
+language = "Python"
+framework = "NGBoost"
+description = "Natural-gradient boosting over a k-categorical distribution: decision-tree base learners fit the natural gradient of the LogScore for probabilistic predictions. Emits calibrated class probabilities; scored by AUC / logloss / accuracy. Pair with a classification-task domain."
+command = "predictors/.venv/bin/python"
+args = ["predictors/ngboost-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/ngboost-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "n_estimators"
+label = "boosting rounds"
+type = "int"
+default = 400
+min = 10
+max = 10000
+
+[[predictors.params]]
+name = "learning_rate"
+label = "learning rate"
+type = "float"
+default = 0.03
+min = 0.001
+max = 1.0
+
+[[predictors.params]]
+name = "minibatch_frac"
+label = "row subsample per round"
+type = "float"
+default = 0.5
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "col_sample"
+label = "column subsample per round"
+type = "float"
+default = 1.0
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "base_max_depth"
+label = "base tree depth"
+type = "int"
+default = 3
+min = 1
+max = 12
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
+
+[[predictors]]
+name = "pyramid-mlp-classifier"
+display_name = "Pyramid-MLP Classifier"
+language = "Python"
+framework = "scikit-learn"
+description = "Feed-forward net whose hidden layers taper geometrically (top_width, top_width*decay, ...) from wide to narrow. StandardScaler + adam + ReLU MLPClassifier; softmax output. Emits calibrated class probabilities; scored by AUC / logloss / accuracy. Pair with a classification-task domain."
+command = "predictors/.venv/bin/python"
+args = ["predictors/pyramid-mlp-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/pyramid-mlp-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "top_width"
+label = "first (widest) hidden layer width"
+type = "int"
+default = 256
+min = 8
+max = 4096
+
+[[predictors.params]]
+name = "n_layers"
+label = "number of hidden layers"
+type = "int"
+default = 3
+min = 1
+max = 10
+
+[[predictors.params]]
+name = "decay"
+label = "per-layer width decay"
+type = "float"
+default = 0.5
+min = 0.1
+max = 1.0
+
+[[predictors.params]]
+name = "alpha"
+label = "L2 regularization"
+type = "float"
+default = 0.0001
+min = 0.0
+max = 100.0
+
+[[predictors.params]]
+name = "learning_rate_init"
+label = "initial learning rate"
+type = "float"
+default = 0.001
+min = 1e-06
+max = 1.0
+
+[[predictors.params]]
+name = "max_iter"
+label = "max training iterations"
+type = "int"
+default = 300
+min = 10
+max = 5000
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
