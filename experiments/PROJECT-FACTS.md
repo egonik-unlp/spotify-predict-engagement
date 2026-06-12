@@ -8,22 +8,23 @@ and must be updated. Writers: the experiment-runner agent and the
 model-definitions experiment workflow reconcile this file as part of every
 campaign report.
 
-Last updated: 2026-06-09 after experiments/2026-06-09-rotation-classification.md —
-the first honest AUC classifier bake-off on rotation. Verdicts: (a) under the new
-classification mode (domain.toml task=binary, primary=AUC), **xgboost-classifier is
-the rotation AUC champion at 0.7429**, now REGISTERED as `xgboost-classifier-rotation`
-and auto-promoted at best-models rank 1 — rotation finally has a saved, AUC-scored,
-promotable champion. (b) The FIRST measured rotation **AUC** noise band is σ_AUC =
-0.00628, 2σ = **0.0126** (does NOT replace the 0.0086 *MAE* band — different metric).
-(c) Every dense family loses on AUC by 4.6–9.3 bands (svc-poly 0.6855 > logistic
-0.6762 > svc-rbf 0.6722 > svc-linear 0.6363 > svc-sigmoid 0.6255) — a 6th win for
-tree-read identity one-hots, now on an honest classification metric, not the binary-MAE
-artifact. (d) The 64 AE-latent cols cost 0.0079 AUC (arm4 178-col 0.7350 vs metadata-only
-0.7429) — same dilutive direction as the regression result but INSIDE the AUC band, so
-neutral-leaning-dilutive at one seed. PRIOR verdicts still stand on their own (MAE/R²)
-axis: the metadata-only xgboost regression champion (MAE 0.3879, R² 0.191) and the SVR
-refutation (every kernel worse-than-mean, ε-tube artifact) are unchanged and NOT
-comparable to these AUC numbers.
+Last updated: 2026-06-12 after experiments/2026-06-12-classifier-bakeoff-p64.md —
+the four-family classifier bake-off on the NEW full-64-d corpus. Verdicts: (a)
+on the NEW 23,529-row full-64-d dataset `ds-20260609-204419-p64-s42` (177 cols),
+**xgboost-classifier wins the four-family bake-off at AUC 0.7204** (reproducing the
+in-dataset reference to all digits), now REGISTERED as `xgboost-classifier-rotation-p64`.
+catboost-classifier 0.7111 is co-leader IN-BAND (−0.0093 < 0.0126, at least equal,
+likely a hair behind — the legitimate 2nd tree family); ngboost 0.6917 is ~2.3 bands
+back; pyramid-mlp 0.6781 is weakest AND under-trained (logloss 2.41 = the 300-iter-cap
+artifact, not its ceiling). (b) An xgboost depth×lr sweep found depth8/lr0.03 best
+(AUC 0.7261) but only +0.0057 over the default — INSIDE the band — so the default
+depth-6 config is the saved one; depth8/lr0.03 is flagged for a 3-seed confirm.
+(c) **CROSS-CORPUS CAVEAT (do not mis-read):** these numbers are LOWER than the 0.7429
+DS-META champion below because that champion is on the OLD 12,256-row metadata-only
+corpus (`ds-20260609-141622-p1-s42`) — NOT comparable; nothing regressed. The two AUC
+leaderboards (old DS-META, new full-64-d) coexist on different corpora. PRIOR verdicts
+from 2026-06-09 stand on their own corpus/axis (the 0.7429 DS-META champion, the dense-family
+refutations, the MAE/R² regression results) and are unchanged.
 
 ## ACTIVE TARGET: rotation (binary taste-fit), pivoted 2026-06-08
 
@@ -83,6 +84,35 @@ champion config: AUC 0.7429 / 0.7307 / 0.7345 (s42 / s17 / s101). Latent-dilutio
 sub-result: arm4 (178-col) −0.0079 AUC vs metadata-only, inside the band —
 neutral-leaning-dilutive (same direction as the regression dilution, sub-band on AUC).
 
+## Best on record (AUC leaderboard) — ROTATION classification, NEW full-64-d corpus
+
+Classification mode, AUC higher-better. Source:
+experiments/2026-06-12-classifier-bakeoff-p64.md. **This is a SEPARATE corpus from the
+DS-META leaderboard above** — dataset `ds-20260609-204419-p64-s42` is the 2026 corpus,
+**23,529 rows** (18,823/4,706 @ seed 42), **177 cols** (64 song-AE PCA latent + 7 numeric
++ 106 identity one-hots), full-64-d. These AUC numbers are NOT comparable to the 0.7429
+DS-META champion (old 12,256-row, metadata-only) — different corpus size AND feature set.
+The only valid in-corpus comparison point is the pre-existing reference run
+`run-20260609-204726-439d8-xgboost-classifier` (AUC 0.7204), which the bake-off reproduced
+to all digits.
+
+| model | dataset | AUC | logloss | accuracy | source | registered? |
+|---|---|---|---|---|---|---|
+| **xgboost-classifier** (n_est 500, depth 6, lr 0.05, sub/col 0.8, seed 42) | ds-20260609-204419-p64-s42 (177) | **0.7204** | 0.6075 | 0.6585 | this corpus' bake-off | **YES — `xgboost-classifier-rotation-p64`, dataset_tags [ds-20260609-204419-p64-s42]** |
+| xgboost-classifier (depth 8, lr 0.03 — sweep best, single-seed) | ds-20260609-204419-p64-s42 | 0.7261 | 0.6044 | 0.6651 | same | no — flagged for 3-seed confirm |
+| catboost-classifier (iter 500, depth 6, lr 0.05) — 2nd tree family, in-band | ds-20260609-204419-p64-s42 | 0.7111 | 0.6132 | 0.6560 | same | no |
+| ngboost-classifier (n_est 400, lr 0.03, base_depth 3) | ds-20260609-204419-p64-s42 | 0.6917 | 0.6293 | 0.6392 | same | no |
+| pyramid-mlp-classifier (256/3, max_iter 300 — UNDER-TRAINED, logloss artifact) | ds-20260609-204419-p64-s42 | 0.6781 | 2.4085 | 0.6326 | same | no |
+
+Read: xgboost-classifier wins this corpus' four-family bake-off (AUC 0.7204);
+catboost is co-leader IN-BAND (−0.0093 < 0.0126) and is the legitimate 2nd tree
+family; ngboost (~2.3 bands back) under-fits with shallow base learners; pyramid-mlp
+is weakest AND under-trained (logloss 2.41 = the 300-iter cap, not its ceiling — its
+brier 0.3251 is the under-training tell, while its AUC 0.6781 is only ~3.4 bands back).
+The depth×lr sweep is monotone in the sensible direction (depth 8 + slow lr best, lr 0.1
+hurts) but the best-vs-default gap (+0.0057) is sub-band, so the default config is saved
+and depth8/lr0.03 awaits a 3-seed confirm.
+
 ## HISTORICAL leaderboard — engagement target (demoted, not the active target)
 
 | model | dataset | MAE | RMSE | R² | source |
@@ -128,6 +158,7 @@ delivered target.
 | dataset (recipe) | feeds | notes |
 |---|---|---|
 | ds-20260608-204402-p64-s42 (pca=64 over the `spotify_tracks_song_ae` AE-latent collection + 114 metadata cols = 178; target rotation/none; `nonpositive_price=FALSE`) | rotation pivot seed run (xgboost latent+metadata, run-20260608-204415-6eeda); the entire 2026-06-09 autoencoder-xgboost blend campaign | 12,256 rows (NO exclusions — rotation==0 is the negative class), 9,805 train / 2,451 test @ seed 42. The 64 "pca" cols ARE the precomputed 64-dim song-autoencoder latent (kind.type=="pca" in the manifest), NOT a behavioral co-listening PCA. The autoencoder-xgboost predictor splits columns by this manifest kind: latent branch = the 64; metadata branch = the other 114. |
+| ds-20260609-204419-p64-s42 (pca=64 song-AE latent + 7 numeric + 106 identity one-hots = 177; target rotation/none; `nonpositive_price=FALSE`) — the **NEW 2026-corpus canonical full-64-d** rotation dataset | the 2026-06-12 four-family classifier bake-off (xgboost/catboost/ngboost/pyramid-mlp + the xgboost depth×lr sweep, 13 runs); the registered `xgboost-classifier-rotation-p64` lives here; pre-existing reference run run-20260609-204726-439d8-xgboost-classifier (AUC 0.7204) | **23,529 rows** (18,823 train / 4,706 test @ seed 42), 177 cols. The NEW (larger, 2026) corpus — NOT the 12,256-row DS-META corpus; AUC numbers on this dataset are NOT comparable to the 0.7429 DS-META champion. xgboost reproduces 0.7204 deterministically (byte-identical across the reference run, C0, and the depth6/lr0.05 sweep cell). |
 | ds-20260608-205802-p64-s42 (pca=64 AE-latent ONLY, no metadata cols) | xgboost on AE-latent only (rotation), the AE-latent-only baseline | 64 cols. Used to measure the latent's standalone rotation signal (MAE 0.4098, R² 0.132 — weaker than metadata). |
 | ds-20260609-141622-p1-s42 (METADATA-ONLY rotation: pca floor=1, NO AE latent; same recipe as p64-s42 with AE cols dropped; target rotation/`none`; `nonpositive_price=FALSE`) | the 2026-06-09 svm-kernel scan (all SVM arms + fair-anchor control + both stage-2 blends) AND the 2026-06-09 rotation-classification bake-off (registered AUC champion `xgboost-classifier-rotation` lives on this recipe) | 115 cols = 1 pca floor + 7 numeric + 107 one-hot; 12,256 rows, 9,805/2,451 @ seed 42. The fair SVM anchor: metadata-only xgboost on this matrix = byte-identical 0.387891 to the 178-col champion (AE branch w=0), so dropping the 64 latent cols is a no-op for the tree. Built with `log_target=false` to get transform `none` (the canonical rotation recipe). |
 | ds-20260609-141641-p1-s17, ds-20260609-141641-p1-s101 (METADATA-ONLY rotation, same recipe, split seeds 17 / 101) | the rotation noise-band measurement (σ_split) | 115 cols each. metadata-only xgboost MAE s17 0.393072 / s101 0.396417 — with s42 0.387891 these three define σ_split = 0.0043 (band 0.0086). Also serve as 2 of the 3 seeds for the pending champion 3-seed confirmation. |
@@ -194,6 +225,35 @@ Generic priors (replace with measured facts as campaigns land):
   vs metadata-only 0.7429) — inside the AUC band, so neutral-leaning-dilutive (same dilutive
   direction as the regressor, sub-band on AUC). Next lever is a champion hyperparameter scan
   + identity-resolution (vocab caps), NOT new families.
+- **catboost-classifier is a legitimate 2nd tree family — co-leader IN-BAND with
+  xgboost on the new full-64-d corpus (MEASURED 2026-06-12).** On
+  `ds-20260609-204419-p64-s42` (23,529 rows, 177 cols), catboost-classifier
+  (iter 500, depth 6, lr 0.05, l2 3.0, subsample 0.8, border 254, seed 42) AUC
+  **0.7111** / logloss 0.6132 vs xgboost-classifier 0.7204 — Δ −0.0093, INSIDE the
+  0.0126 band, so "at least equal, likely a hair behind", NOT refuted. First
+  head-to-head of catboost here; it is the one non-xgboost family that stays in-band
+  on the GBDT regime. Use as a tree-diversity / second-opinion member; do not expect
+  it to beat xgboost on AUC alone.
+- **ngboost-classifier under-fits the one-hot-heavy matrix (~2.3 bands back,
+  MEASURED 2026-06-12).** On the same dataset, ngboost-classifier (n_est 400,
+  lr 0.03, minibatch 0.5, col 1.0, base_max_depth 3, seed 42) AUC **0.6917** /
+  logloss 0.6293 — −0.0287 (~2.3 bands) below xgboost. Its natural-gradient
+  distributional objective with SHALLOW base learners (depth 3) pays for its
+  probabilistic machinery in raw ranking power on 177 sparse one-hot cols. Not a
+  failure, just not competitive on AUC; reach for it only if calibrated predictive
+  distributions are needed, not for the AUC leaderboard.
+- **pyramid-mlp-classifier is the weakest arm AND under-trains at the default
+  300-iter cap — logloss 2.41 is an ARTIFACT, not the ceiling (MEASURED 2026-06-12).**
+  On the same dataset, pyramid-mlp (top_width 256, n_layers 3, decay 0.5, alpha 1e-4,
+  lr_init 1e-3, max_iter 300, seed 42) AUC **0.6781** with logloss **2.4085** and
+  brier **0.3251** (vs ~0.60–0.63 logloss / ~0.21 brier for the trees). The blown
+  logloss/brier is the un-converged 300-iteration cap (poor probability calibration),
+  NOT a ranking collapse — its AUC 0.6781 is only ~3.4 bands behind. A dense MLP
+  blurring sparse identity one-hots is the same failure mode as the SVC/logistic
+  dense families (the convergent finding); a converged run (max_iter 500+) would lift
+  logloss/brier toward the field but is unlikely to overtake the trees on AUC. ALWAYS
+  set max_iter ≥ 500 for pyramid on this corpus; a high default-300 logloss is
+  under-training, not the model.
 - **blend grid-by-MAE is UNSAFE on binary targets (MEASURED 2026-06-09).** The
   `blend` meta-predictor with weight_fit=grid optimizes validation MAE. On
   rotation, both stage-2 blends (xgb+svm, lgbm+svm) fitted weights **[0.0, 1.0]** —
@@ -321,6 +381,89 @@ resolution is a DECISION, not an improvisation:
 
 Additive log of judgment-pass overrides applied via `PUT /api/best-models`
 (the deterministic top-12-by-MAE recompute can't apply these). Newest first.
+
+### 2026-06-12 — fourth judgment pass after the four-family classifier bake-off (full-64-d, new corpus)
+
+State on entry: group full (12/12), 30 prior exclusions intact, no pins. Recompute
+was fresh (updated_at 2026-06-12T12:17:04 matched the last campaign run finish — no
+manual recompute needed). The bake-off + sweep added 13 runs on the NEW 23,529-row
+full-64-d dataset `ds-20260609-204419-p64-s42` and saved one named definition. The
+deterministic AUC top-12 had filled 11 of 12 slots with xgboost-classifier (a
+near-total monoculture): the OLD-corpus 0.7429 / 0.7350 members at ranks 1-2, then
+the new-corpus xgboost default config carried THREE times (determinism triplet), the
+single-seed unconfirmed sweep best, and six more depth×lr sweep cells — with catboost
+clinging to rank 12 and ngboost/pyramid-mlp pushed out entirely.
+
+Registry note (corrects the report): the saved definition is named **`xgboost-one`**
+(predictor xgboost-classifier), backed by run **`run-20260609-204726-439d8`**
+(depth6/lr0.05, the new-corpus default config, AUC 0.7204) — NOT
+`xgboost-classifier-rotation-p64` as the report states. 439d8 is therefore the
+canonical new-corpus representative kept in the group. (It is a named definition but
+not flagged `promoted`, so it is held as the auto-selected member, not a pin — pin
+semantics require a promoted model.)
+
+**Excluded (11 new run ids) — three groups, each verified against `GET /api/runs`
+auc fields and the campaign report config table before excluding:**
+
+1. **Determinism triplet → kept ONE representative (439d8).** The new-corpus
+   depth6/lr0.05 config was run three times, all AUC 0.7204383403100314 byte-identical:
+   the pre-existing reference 439d8, the Phase-1 C0 (840c0), and the Phase-2 cell (dceaa).
+   Kept 439d8 (the in-dataset reference AND the run backing the `xgboost-one` definition);
+   excluded `run-20260612-115909-840c0-xgboost-classifier` and
+   `run-20260612-120207-dceaa-xgboost-classifier` — one model, not three slots.
+2. **Redundant same-family/same-corpus depth×lr sweep cells (kept 439d8 as the single
+   xgboost new-corpus representative).** Seven sweep cells differ from the kept default
+   only in depth/lr — near-identical configs of the same family on the same corpus that
+   contribute only correlated votes to a consensus predict (the family-monoculture risk):
+   `12f3a` (d6/lr.03, 0.7205), `2ebc3` (d8/lr.05, 0.7196), `a0c91` (d8/lr.1, 0.7173),
+   `36844` (d6/lr.1, 0.7153), `76da0` (d4/lr.1, 0.7119), `dccde` (d4/lr.05, 0.7094),
+   `81063` (d4/lr.03, 0.7074).
+3. **Single-seed, unconfirmed sweep best (1).** `run-20260612-120207-2dd3d-xgboost-classifier`
+   (depth8/lr0.03, AUC 0.7261) is +0.0057 over the default — INSIDE the 0.0126 AUC band
+   at ONE seed, explicitly flagged by the campaign for a 3-seed confirm. Not suspicious
+   (n_test 4,706, no leakage signature) but "likely better, not confirmed"; excluded so it
+   does not masquerade as a distinct better model nor crowd a slot before confirmation.
+   Revisit trigger: unexclude (and consider re-saving `xgboost-one` at depth 8) if the
+   3-seed study clears the re-measured band.
+4. **Under-trained pyramid-mlp (1) — logloss artifact.** `run-20260612-115909-ea698-pyramid-mlp-classifier`
+   AUC 0.6781 with logloss **2.4085** / brier 0.3251 is the documented 300-iter-cap
+   under-training artifact (the runner flagged it must not sneak in). Its AUC is genuine
+   ranking signal but its calibration is broken; excluded until a converged (max_iter ≥ 500)
+   run replaces it. Revisit trigger: unexclude when the converged pyramid read lands.
+
+**Kept for family diversity / left alone:** catboost (`c7ef6`, 0.7111 — the legitimate
+2nd tree family, in-band) was rescued from rank 12 to rank 4 simply by removing the
+xgboost crowding (no pin needed; pins require a promoted model and catboost is not a
+registered definition). ngboost (`d725b`, 0.6917, ~2.3 bands back) backfilled in as a
+genuine 3rd family — kept. The OLD-corpus dense tail (svc ×4 + logistic, ranks 6-10,
+AUC 0.6255–0.6855) carries the prior pass's standing "leave alone unless consensus
+drifts toward chance" note — distinct families, genuine AUC-rankable members, no
+duplicates/artifacts — so left in place. The 30 prior exclusions were all left intact.
+No pins, no unexcludes, no unpins.
+
+**Cross-corpus caveat (carried, not resolved by curation).** Ranks 1-2 (627d6 0.7429,
+fffa4 0.7350) live on the OLD DS-META / 178-col p64 corpora and the dense tail (ranks
+6-10) on OLD DS-META; ranks 3-5 (439d8, catboost, ngboost) are the NEW 23,529-row
+full-64-d corpus. The deterministic AUC sort ranks the old-corpus 0.7429 above the
+new-corpus members, which is NOT a like-for-like ordering (different corpus size AND
+feature set — see the new-corpus AUC leaderboard above). Curation cannot fix a
+cross-corpus sort; flagged so consumers do not read rank-1 as "best on the current
+corpus". The new-corpus champion is rank 3 (439d8 / `xgboost-one`, AUC 0.7204).
+
+**Result: group = 10 entries (4 distinct predictor families), 41 total exclusions, no pins.**
+
+| rank | model | predictor | AUC | corpus | note |
+|---|---|---|---|---|---|
+| 1 | best-xgboost-classifier-…-627d6 | xgboost-classifier | 0.7429 | OLD DS-META | registered DS-META champion `xgboost-classifier-rotation` (s42); cross-corpus |
+| 2 | best-xgboost-classifier-…-fffa4 | xgboost-classifier | 0.7350 | OLD p64 (178) | distinct: AE-latent+metadata dilution arm; cross-corpus |
+| 3 | best-xgboost-classifier-…-439d8 | xgboost-classifier | 0.7204 | NEW full-64-d | NEW-corpus champion; backs the `xgboost-one` definition; determinism-triplet representative |
+| 4 | best-catboost-classifier-…-c7ef6 | catboost-classifier | 0.7111 | NEW full-64-d | 2nd tree family, in-band (−0.0093 < band) |
+| 5 | best-ngboost-classifier-…-d725b | ngboost-classifier | 0.6917 | NEW full-64-d | 3rd family, ~2.3 bands back |
+| 6 | best-svc-…-848b8 | svc (poly d3) | 0.6855 | OLD DS-META | prior-pass dense-tail member; cross-corpus |
+| 7 | best-logistic-…-8e4d9 | logistic | 0.6762 | OLD DS-META | prior-pass dense-tail member; cross-corpus |
+| 8 | best-svc-…-a704f | svc (rbf) | 0.6722 | OLD DS-META | prior-pass dense-tail member |
+| 9 | best-svc-…-45798 | svc (linear) | 0.6363 | OLD DS-META | prior-pass dense-tail member |
+| 10 | best-svc-…-53bb5 | svc (sigmoid) | 0.6255 | OLD DS-META | prior-pass dense-tail member (documented worst) |
 
 ### 2026-06-09 (latest) — third judgment pass after the rotation-classification (AUC) campaign
 
