@@ -8,7 +8,7 @@ and must be updated. Writers: the experiment-runner agent and the
 model-definitions experiment workflow reconcile this file as part of every
 campaign report.
 
-Last updated: 2026-06-12 — after experiments/2026-06-12-high-vocab-topology.md, the HIGH-VOCAB paired re-run of the burn-deep-classifier topology bake-off on `ds-20260612-143014-p64-s42` (artist cap 300 / genre 120; identity cardinality the only axis vs the canonical full-64-d dataset). VERDICT: the "embeddings starved at low cardinality" hypothesis from experiments/2026-06-12-burn-deep-topology.md is **RESOLVED-CONFIRMED (directionally)** — the topology ranking REVERSED: `embeddings` (0.7192) now beats `mlp` (0.7129, +0.0063) and `wide_deep` (0.7061), undoing the old +0.0067 mlp-over-embeddings margin (a +0.0130 swing across the band). Both trees ALSO moved up on the wider matrix (xgboost 0.7204→**0.7299**, catboost 0.7111→**0.7252**) — high vocab helps every family; the in-dataset tree tier is 0.7252–0.7299. The best embeddings net reaches the BOTTOM of that tree tier (Phase-2 ed8/lr0.0005 0.7228, −0.0024 vs catboost, in-band) and the saved Phase-1-winner config (embeddings, ed16, lr0.001, 0.7192) is the FIRST ANN to clear the save bar on rotation: registered as `burn-deep-embeddings-highvocab` (dataset_tags [ds-20260612-143014-p64-s42]), flagged for best-model-selector. embed_dim is already saturated at 8 (ed8≥ed16≥ed32, sub-band); the gain came from enabling embeddings + lr 0.0005, not from width. Determinism confirmed (ed16/lr0.001 reproduced to 4 digits). Prior update — built `ds-20260612-143014-p64-s42`, a HIGH-VOCAB variant of the canonical full-64-d rotation dataset (artist one-hot cap 60->300, genre_primary 40->120; everything else byte-identical) to feed this bake-off. Prior update after experiments/2026-06-12-burn-deep-topology.md —
+Last updated: 2026-06-12 — after experiments/archive/2026-06-12-high-vocab-topology.md, the HIGH-VOCAB paired re-run of the burn-deep-classifier topology bake-off on `ds-20260612-143014-p64-s42` (artist cap 300 / genre 120; identity cardinality the only axis vs the canonical full-64-d dataset). VERDICT: the "embeddings starved at low cardinality" hypothesis from experiments/archive/2026-06-12-burn-deep-topology.md is **RESOLVED-CONFIRMED (directionally)** — the topology ranking REVERSED: `embeddings` (0.7192) now beats `mlp` (0.7129, +0.0063) and `wide_deep` (0.7061), undoing the old +0.0067 mlp-over-embeddings margin (a +0.0130 swing across the band). Both trees ALSO moved up on the wider matrix (xgboost 0.7204→**0.7299**, catboost 0.7111→**0.7252**) — high vocab helps every family; the in-dataset tree tier is 0.7252–0.7299. The best embeddings net reaches the BOTTOM of that tree tier (Phase-2 ed8/lr0.0005 0.7228, −0.0024 vs catboost, in-band) and the saved Phase-1-winner config (embeddings, ed16, lr0.001, 0.7192) is the FIRST ANN to clear the save bar on rotation: registered as `burn-deep-embeddings-highvocab` (dataset_tags [ds-20260612-143014-p64-s42]), flagged for best-model-selector. embed_dim is already saturated at 8 (ed8≥ed16≥ed32, sub-band); the gain came from enabling embeddings + lr 0.0005, not from width. Determinism confirmed (ed16/lr0.001 reproduced to 4 digits). Prior update — built `ds-20260612-143014-p64-s42`, a HIGH-VOCAB variant of the canonical full-64-d rotation dataset (artist one-hot cap 60->300, genre_primary 40->120; everything else byte-identical) to feed this bake-off. Prior update after experiments/archive/2026-06-12-burn-deep-topology.md —
 a burn-deep-classifier (NEW Rust/burn predictor) topology bake-off {mlp, embeddings,
 wide_deep} + a 6-cell mlp tune on the full-64-d rotation dataset. Verdict: the full-rust
 net with RAW (un-standardized) one-hots **FIXES the sklearn pyramid's calibration blowup
@@ -150,7 +150,7 @@ pyramid's calibration blowup (2.0–2.4 / 0.33), shrinking the dense-vs-trees ga
 ## Best on record (AUC leaderboard) — ROTATION classification, HIGH-VOCAB full-64-d corpus
 
 Classification mode, AUC higher-better. Source:
-experiments/2026-06-12-high-vocab-topology.md. **SEPARATE matrix from every board above** —
+experiments/archive/2026-06-12-high-vocab-topology.md. **SEPARATE matrix from every board above** —
 dataset `ds-20260612-143014-p64-s42` is the SAME 2026 corpus / 23,529 rows / 18,823/4,706
 @ seed 42 as the full-64-d board, but **497 cols** (64 song-AE PCA latent + 9 numeric +
 426 identity one-hots: artist 301, genre_primary 121, album_type 4) — identity caps raised
@@ -506,7 +506,7 @@ Additive log of judgment-pass overrides applied via `PUT /api/best-models`
 
 State on entry: group full (12/12), 55 prior exclusions intact, no pins. Recompute was
 fresh (selected_at 2026-06-12T14:35:24 matched the last high-vocab run finish — no manual
-recompute needed). The high-vocab topology campaign (`experiments/2026-06-12-high-vocab-topology.md`)
+recompute needed). The high-vocab topology campaign (`experiments/archive/2026-06-12-high-vocab-topology.md`)
 landed 11 runs on a THIRD, non-comparable feature matrix `ds-20260612-143014-p64-s42`
 (same 23,529 rows / seed 42 / PCA64 + numerics as the 60/40 full-64-d matrix; identity
 vocab raised to artist 300 / genre 120 → 426 one-hot cols). The deterministic AUC top-12
