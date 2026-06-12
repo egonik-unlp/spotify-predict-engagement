@@ -1427,3 +1427,95 @@ type = "int"
 default = 42
 min = 0
 max = 1000000
+
+[[predictors]]
+name = "burn-deep-classifier"
+display_name = "Deep Classifier (burn)"
+language = "Rust"
+framework = "burn"
+description = "Representation-aware deep classifier. Splits features into a standardized continuous block (PCA + numerics) and raw one-hot identity groups, then trains one of three topologies: `mlp` (dense over all features), `embeddings` (a learned entity embedding per identity group + MLP — the fix for high-cardinality one-hots), or `wide_deep` (a wide linear path over one-hots summed with a deep MLP over the continuous block). Softmax cross-entropy; emits calibrated class probabilities scored by AUC / logloss / accuracy. Rust, CPU. Pair with a classification-task domain."
+command = "target/release/predictor-burn-deep-clf"
+args = ["train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = true
+
+[[predictors.params]]
+name = "topology"
+label = "network topology"
+type = "enum"
+default = "embeddings"
+options = ["mlp", "embeddings", "wide_deep"]
+
+[[predictors.params]]
+name = "hidden"
+label = "deep-trunk hidden layers"
+type = "ints"
+default = [128, 64]
+
+[[predictors.params]]
+name = "embed_dim"
+label = "embedding width per identity group (capped at cardinality)"
+type = "int"
+default = 8
+min = 1
+max = 256
+
+[[predictors.params]]
+name = "activation"
+label = "hidden-layer activation"
+type = "enum"
+default = "relu"
+options = ["relu", "gelu", "silu", "tanh"]
+
+[[predictors.params]]
+name = "dropout"
+type = "float"
+default = 0.1
+min = 0.0
+max = 0.9
+
+[[predictors.params]]
+name = "epochs"
+type = "int"
+default = 100
+min = 1
+max = 100000
+
+[[predictors.params]]
+name = "lr"
+label = "learning rate"
+type = "float"
+default = 0.001
+min = 0.000001
+max = 1.0
+
+[[predictors.params]]
+name = "batch_size"
+type = "int"
+default = 256
+min = 1
+max = 100000
+
+[[predictors.params]]
+name = "patience"
+label = "early-stop patience (epochs, 0 = off)"
+type = "int"
+default = 0
+min = 0
+max = 10000
+
+[[predictors.params]]
+name = "val_fraction"
+label = "early-stop validation fraction (of train)"
+type = "float"
+default = 0.15
+min = 0.05
+max = 0.5
+
+[[predictors.params]]
+name = "checkpoint_every"
+label = "checkpoint every N epochs (0 = end only)"
+type = "int"
+default = 0
+min = 0
+max = 100000

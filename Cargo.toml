@@ -8,6 +8,7 @@ members = [
     "crates/lensing-server",
     "crates/predictor-burn-mlp",
     "crates/predictor-burn-cnn",
+    "crates/predictor-burn-deep-clf",
     "crates/predictor-blend",
 ]
 
