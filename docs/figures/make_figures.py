@@ -188,8 +188,241 @@ def fig_auc_noise_band():
     save(fig, "auc_noise_band.pdf")
 
 
+# Fig 5: the four-family bake-off on the NEW full-64-d corpus — the family
+# ordering survives the corpus change; the two tree families lead, the dense
+# net is last (2026-06-12-classifier-bakeoff-p64.md, Phase 1).
+def fig_bakeoff_p64():
+    labels = [
+        "xgboost-classifier\n(winner)",
+        "catboost-classifier\n(2nd tree, in-band)",
+        "ngboost-classifier",
+        "pyramid-mlp-classifier\n(dense net)",
+    ]
+    auc = [0.7204, 0.7111, 0.6917, 0.6781]
+    colors = [GOOD, ACCENT, MUTED, BAD]
+    band = 0.0126  # 2-sigma AUC band (old-corpus estimate, approximate here)
+    winner = 0.7204
+
+    fig, ax = plt.subplots(figsize=(6.2, 3.4))
+    y = np.arange(len(labels))[::-1]
+    ax.barh(y, auc, color=colors)
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_xlabel("AUC (P(rotation))")
+    ax.set_xlim(0.5, 0.76)
+    ax.xaxis.set_major_formatter(afmt)
+    ax.axvline(0.5, color="black", lw=1.0, label="chance (0.5)")
+    # in-band strip below the winner: catboost falls inside it
+    ax.axvspan(winner - band, winner, color=GOOD, alpha=0.12, label="$2\\sigma$ band below winner")
+    for yi, a in zip(y, auc):
+        ax.text(a + 0.003, yi, f"{a:.3f}", va="center", fontsize=7.5)
+    ax.set_title("New full-64-d corpus: two tree families lead, the dense net is last")
+    ax.legend(loc="lower right", fontsize=7.5)
+    save(fig, "bakeoff_p64.pdf")
+
+
+# Fig 6: xgboost depth × learning-rate sweep on the new corpus — depth is the
+# dominant axis, high lr hurts; the best cell beats the default sub-band
+# (2026-06-12-classifier-bakeoff-p64.md, Phase 2).
+def fig_xgb_depth_lr_heatmap():
+    depths = [4, 6, 8]
+    lrs = [0.03, 0.05, 0.1]
+    # AUC[depth_idx][lr_idx], transcribed from the Phase-2 sweep table.
+    auc = np.array([
+        [0.7074, 0.7094, 0.7119],  # depth 4
+        [0.7205, 0.7204, 0.7153],  # depth 6
+        [0.7261, 0.7196, 0.7173],  # depth 8
+    ])
+    best = (2, 0)  # depth 8, lr 0.03
+
+    fig, ax = plt.subplots(figsize=(5.2, 3.6))
+    im = ax.pcolormesh(
+        np.arange(len(lrs) + 1), np.arange(len(depths) + 1), auc,
+        cmap="viridis", shading="flat",
+    )
+    ax.set_xticks(np.arange(len(lrs)) + 0.5)
+    ax.set_xticklabels([f"{v:g}" for v in lrs])
+    ax.set_yticks(np.arange(len(depths)) + 0.5)
+    ax.set_yticklabels([str(d) for d in depths])
+    ax.set_xlabel("learning rate")
+    ax.set_ylabel("max_depth")
+    ax.grid(False)
+    for i in range(len(depths)):
+        for j in range(len(lrs)):
+            is_best = (i, j) == best
+            ax.text(
+                j + 0.5, i + 0.5, f"{auc[i, j]:.4f}",
+                ha="center", va="center", fontsize=8,
+                color="white" if auc[i, j] < 0.718 else "black",
+                fontweight="bold" if is_best else "normal",
+            )
+            if is_best:
+                ax.add_patch(plt.Rectangle((j, i), 1, 1, fill=False, edgecolor=BAD, lw=2.2))
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label("AUC (P(rotation))")
+    cbar.formatter = afmt
+    cbar.update_ticks()
+    ax.set_title("Depth is the lever, fast lr hurts;\nbest (depth 8, lr 0.03) is only sub-band over default")
+    save(fig, "xgb_depth_lr_heatmap.pdf")
+
+
+# Fig 7: the dense-net diagnostic signature — genuine AUC ranking signal
+# coexisting with blown log-loss (calibration ceiling), contrasted with the
+# trees. Source: bake-off (xgb/catboost/ngboost/mlp logloss) +
+# arch scan (best converged MLP, and the random-baseline log-loss reference)
+# (2026-06-12-classifier-bakeoff-p64.md + 2026-06-12-pyramid-mlp-arch-scan.md).
+def fig_mlp_calibration_signature():
+    labels = [
+        "xgboost",
+        "catboost",
+        "ngboost",
+        "pyramid-mlp\n(arch scan best)",
+        "pyramid-mlp\n(bake-off)",
+    ]
+    auc = [0.7204, 0.7111, 0.6917, 0.6792, 0.6781]
+    logloss = [0.6075, 0.6132, 0.6293, 2.0584, 2.4085]
+    colors = [GOOD, GOOD, MUTED, BAD, BAD]
+    rand_logloss = 0.6900  # log-loss of a constant base-rate predictor (~0.445)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.8, 3.4))
+    x = np.arange(len(labels))
+
+    ax1.bar(x, auc, color=colors)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels, fontsize=6.5)
+    ax1.set_ylim(0.5, 0.74)
+    ax1.yaxis.set_major_formatter(afmt)
+    ax1.axhline(0.5, color="black", lw=1.0)
+    ax1.set_ylabel("AUC (P(rotation))")
+    ax1.set_title("AUC: the net DOES rank\n(genuine signal, $\\approx 0.68$)")
+
+    ax2.bar(x, logloss, color=colors)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels, fontsize=6.5)
+    ax2.axhline(rand_logloss, color=BAD, ls="--", lw=1.2, label="random baseline ($\\approx 0.69$)")
+    ax2.set_ylabel("log-loss (lower better)")
+    ax2.set_title("log-loss: but it is confidently WRONG\n(worse than the random baseline)")
+    ax2.legend(loc="upper left", fontsize=7)
+    save(fig, "mlp_calibration_signature.pdf")
+
+
+# Fig 8: the pyramid-MLP architecture scan refutes the budget hypothesis —
+# every geometry self-stops at 73–100 iters (well below the 800 cap and even
+# the old 300 cap), and the whole family lands inside one noise band
+# (2026-06-12-pyramid-mlp-arch-scan.md, Results).
+def fig_mlp_arch_scan():
+    arms = [
+        "M1 [512,256]",
+        "M0 [256,128,64]",
+        "M4 [384,307,246]",
+        "M2 [256,128,64,32]",
+        "M3 [512,169,56]",
+        "M5 [512,307,184,111]",
+    ]
+    auc = [0.6792, 0.6781, 0.6777, 0.6737, 0.6736, 0.6712]
+    iters = [75, 73, 87, 100, 89, 84]
+    band = 0.0126
+    default = 0.6781  # M0 re-baseline (== the under-trained 300-iter default)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 3.4))
+    y = np.arange(len(arms))[::-1]
+
+    # left: AUC, whole family inside one band of the default
+    ax1.barh(y, auc, color=[GOOD] + [MUTED] * 5)
+    ax1.set_yticks(y)
+    ax1.set_yticklabels(arms, fontsize=7)
+    ax1.set_xlim(0.66, 0.685)
+    ax1.xaxis.set_major_formatter(afmt)
+    ax1.axvspan(default - band, default + band, color=ACCENT, alpha=0.12, label="$\\pm 2\\sigma$ band")
+    ax1.axvline(default, color=ACCENT, ls="--", lw=1.0)
+    for yi, a in zip(y, auc):
+        ax1.text(a - 0.0006, yi, f"{a:.4f}", va="center", ha="right", fontsize=6.5, color="white")
+    ax1.set_xlabel("AUC (P(rotation))")
+    ax1.set_title("Every geometry is inside one band\n(architecture is exhausted)")
+    ax1.legend(loc="lower right", fontsize=6.5)
+
+    # right: stopping iteration vs the caps — budget was never binding
+    ax2.barh(y, iters, color=MUTED)
+    ax2.set_yticks(y)
+    ax2.set_yticklabels([])
+    ax2.axvline(300, color=ACCENT, ls=":", lw=1.4, label="old cap (300)")
+    ax2.axvline(800, color=BAD, ls="--", lw=1.4, label="raised cap (800)")
+    for yi, it in zip(y, iters):
+        ax2.text(it + 6, yi, f"{it}", va="center", fontsize=7)
+    ax2.set_xlim(0, 850)
+    ax2.set_xlabel("iterations to self-stop")
+    ax2.set_title("All self-stop at 73--100 iters:\nbudget was never the constraint")
+    ax2.legend(loc="lower right", fontsize=6.5)
+    save(fig, "mlp_arch_scan.pdf")
+
+
+# Fig 9: the burn-deep-classifier topology bake-off resolves the open question.
+# Left: the three topologies (plain mlp wins, all inside one band, embeddings
+# edges wide_deep). Right: the calibration recovery — the Rust/burn net with RAW
+# one-hots drops log-loss from the sklearn pyramid's ~2.0 to the trees' ~0.62
+# regime (2026-06-12-burn-deep-topology.md, Phase 1 + Findings (i)).
+def fig_burn_topology():
+    # Left panel: Phase-1 topology AUC (winner mlp, then embeddings, wide_deep).
+    topo = ["mlp\n(plain)", "embeddings", "wide_deep"]
+    topo_auc = [0.7001, 0.6934, 0.6918]
+    band = 0.0126  # 2-sigma AUC band (old-corpus estimate, approximate here)
+    winner = 0.7001
+    topo_colors = [GOOD, ACCENT, MUTED]
+
+    # Right panel: the calibration recovery — sklearn pyramid vs the burn net,
+    # the headline finding (log-loss 2.0 -> 0.62, into the tree regime).
+    calib_labels = [
+        "sklearn\npyramid-mlp",
+        "burn-deep\n(mlp, raw 1-hot)",
+        "xgboost\n(tree tier)",
+    ]
+    calib_logloss = [2.0584, 0.6211, 0.6075]
+    calib_colors = [BAD, GOOD, MUTED]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 3.4))
+
+    # Left: topology comparison, all inside one band of the plain-mlp winner.
+    x = np.arange(len(topo))
+    ax1.bar(x, topo_auc, color=topo_colors)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(topo, fontsize=7.5)
+    ax1.set_ylim(0.5, 0.72)
+    ax1.yaxis.set_major_formatter(afmt)
+    ax1.axhline(0.5, color="black", lw=1.0)
+    ax1.axhspan(winner - band, winner, color=GOOD, alpha=0.12, label="$2\\sigma$ band below winner")
+    for xi, a in zip(x, topo_auc):
+        ax1.text(xi, a + 0.004, f"{a:.4f}", ha="center", fontsize=7.5)
+    ax1.set_ylabel("AUC (P(rotation))")
+    ax1.set_title("Plain mlp wins; entity embeddings\nstarved at low cardinality")
+    ax1.legend(loc="lower center", fontsize=6.5)
+
+    # Right: the calibration fix — the headline.
+    xc = np.arange(len(calib_labels))
+    ax2.bar(xc, calib_logloss, color=calib_colors)
+    ax2.set_xticks(xc)
+    ax2.set_xticklabels(calib_labels, fontsize=7)
+    rand_logloss = 0.6900  # constant base-rate predictor (~0.445)
+    ax2.axhline(rand_logloss, color=MUTED, ls="--", lw=1.0, label="random baseline ($\\approx 0.69$)")
+    for xi, ll in zip(xc, calib_logloss):
+        ax2.text(xi, ll + 0.04, f"{ll:.3f}", ha="center", fontsize=7.5)
+    ax2.annotate(
+        "", xy=(1, 0.72), xytext=(0, 2.0),
+        arrowprops=dict(arrowstyle="->", color=ACCENT, lw=1.6),
+    )
+    ax2.text(0.5, 1.45, "raw one-hots\nfix calibration", ha="center", fontsize=7, color=ACCENT)
+    ax2.set_ylabel("log-loss (lower better)")
+    ax2.set_title("The headline: log-loss $2.0\\to 0.62$\n(into the tree regime)")
+    ax2.legend(loc="upper right", fontsize=6.5)
+    save(fig, "burn_topology.pdf")
+
+
 if __name__ == "__main__":
     fig_ae_latent_knn()
     fig_svm_mae_vs_r2()
     fig_auc_bakeoff()
     fig_auc_noise_band()
+    fig_bakeoff_p64()
+    fig_xgb_depth_lr_heatmap()
+    fig_mlp_calibration_signature()
+    fig_mlp_arch_scan()
+    fig_burn_topology()
