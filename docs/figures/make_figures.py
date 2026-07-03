@@ -490,6 +490,112 @@ def fig_burn_highvocab():
     save(fig, "burn_highvocab.pdf")
 
 
+# Fig 11: the GBDT-leaf-embedding -> head ceiling probe (Facebook GBDT->LR
+# generalized to GBDT->MLP). Every head trained on the frozen champion's one-hot
+# leaf indices caps BELOW the bare tree on AUC (left) AND blows calibration
+# (right): the leaf one-hots are a strictly lossier view of a tree that already
+# scores better directly (2026-06-15-gbdt-leaf-head-ceiling-probe.md, Results +
+# Findings). On the 60/40 full-64-d matrix ds-20260609-204419-p64-s42, seed 42.
+def fig_leaf_head_ceiling():
+    labels = [
+        "bare xgboost\n(C0 control)",
+        "GBDT->linear\n(T1)",
+        "GBDT->mlp[256,128]\n(T3)",
+        "GBDT->mlp[128]\n(T2)",
+    ]
+    auc = [0.7204, 0.6978, 0.6921, 0.6897]
+    logloss = [0.6075, 1.3119, 1.1813, 0.8162]
+    colors = [GOOD, BAD, BAD, BAD]
+    band = 0.0126  # 2-sigma AUC band
+    champ = 0.7204
+    refute = champ - band  # 0.7078 refutation threshold
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 3.4))
+    x = np.arange(len(labels))
+
+    # Left: AUC — every head below the refutation threshold (champion - band).
+    ax1.bar(x, auc, color=colors)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(labels, fontsize=6.5)
+    ax1.set_ylim(0.66, 0.73)
+    ax1.yaxis.set_major_formatter(afmt)
+    ax1.axhline(champ, color=GOOD, ls="-", lw=1.2)
+    ax1.axhspan(refute, champ, color=GOOD, alpha=0.12, label="$2\\sigma$ band below champion")
+    ax1.axhline(refute, color=GOOD, ls="--", lw=1.0, label=f"refutation thr. ({refute:.4f})")
+    for xi, a in zip(x, auc):
+        ax1.text(xi, a + 0.0008, f"{a:.4f}", ha="center", fontsize=6.8)
+    ax1.set_ylabel("AUC (P(rotation))")
+    ax1.set_title("Every head caps below the bare tree\n(1.8--2.4 bands; REFUTED)")
+    ax1.legend(loc="lower right", fontsize=6.3)
+
+    # Right: log-loss — every head mis-calibrated vs the tree.
+    ax2.bar(x, logloss, color=colors)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels, fontsize=6.5)
+    rand_logloss = 0.6900  # constant base-rate predictor (~0.445)
+    ax2.axhline(rand_logloss, color=MUTED, ls="--", lw=1.0, label="random baseline ($\\approx 0.69$)")
+    ax2.axhline(0.6075, color=GOOD, ls=":", lw=1.2, label="tree regime (0.608)")
+    for xi, ll in zip(x, logloss):
+        ax2.text(xi, ll + 0.03, f"{ll:.3f}", ha="center", fontsize=6.8)
+    ax2.set_ylabel("log-loss (lower better)")
+    ax2.set_title("And every head is mis-calibrated\n(log-loss 0.82--1.31 vs 0.61)")
+    ax2.legend(loc="upper right", fontsize=6.3)
+    save(fig, "leaf_head_ceiling.pdf")
+
+
+# Fig 12: the identity-resolution vocab-cap scan on the bare GBDT — the cap->AUC
+# curve for artist/genre one-hot cardinality, holding the champion xgboost
+# config (and catboost as a secondary arm) fixed and moving only vocab_top_n.
+# The first jump (60->300) carries the gain; past 300/120 the lever pays only
+# sub-band returns that wobble inside the noise envelope, and the top-of-curve
+# all-vocab point (6633 cols) could not be built (host memory ceiling) — marked
+# as unmeasured, NOT a modeling result. Catboost tracks xgboost qualitatively.
+# (2026-06-15-vocab-cap-scan-gbdt.md, "The cap -> AUC curve" + Findings).
+def fig_vocab_cap_scan():
+    caps = ["60/40", "300/120", "500/200", "1000/300", "all\n5594/962"]
+    ncols = [177, 497, 777, 1377, 6633]
+    x = np.arange(len(caps))
+    # AUC by artist/genre cap; the all-vocab point is unmeasured (build failed).
+    xgb = [0.72044, 0.72988, 0.72966, 0.73490, np.nan]
+    cat = [0.71105, 0.72516, 0.72372, 0.72633, np.nan]
+    band = 0.0126  # 2-sigma AUC band (rotation-classification estimate)
+    anchor = 0.72988  # the 300/120 xgboost anchor the scan is read against
+    best = (3, 0.73490)  # 1000/300 xgboost, new in-lineage single-split best
+
+    fig, ax = plt.subplots(figsize=(6.4, 3.6))
+    # band envelope above the 300/120 anchor: a >=1-band beat would clear its top
+    ax.axhspan(anchor, anchor + band, color=GOOD, alpha=0.10,
+               label="$+2\\sigma$ band over 300/120 anchor")
+    ax.axhline(anchor, color=GOOD, ls="--", lw=1.0)
+
+    xm = np.arange(4)  # measured points only (drop the failed all-vocab x)
+    ax.plot(xm, xgb[:4], "o-", color=ACCENT, lw=1.8, label="xgboost (champion config)")
+    ax.plot(xm, cat[:4], "s--", color=MUTED, lw=1.4, label="catboost (secondary)")
+    for xi, a in zip(xm, xgb[:4]):
+        ax.text(xi, a + 0.0010, f"{a:.4f}", ha="center", fontsize=7, color=ACCENT)
+    # mark the new in-lineage best
+    ax.annotate("new in-lineage best\n(+0.0050, sub-band)", xy=best,
+                xytext=(2.1, 0.7368), ha="center", fontsize=6.8, color=GOOD,
+                arrowprops=dict(arrowstyle="->", color=GOOD, lw=0.8))
+    # the unmeasured all-vocab point: a hatched marker on the axis, no value
+    ax.axvline(4, color=BAD, ls=":", lw=1.2)
+    ax.scatter([4], [anchor], marker="x", s=90, color=BAD, zorder=5)
+    ax.annotate("all-vocab (6633 cols)\nNOT measured\n(build memory ceiling)",
+                xy=(4, anchor), xytext=(3.05, 0.7250), ha="center",
+                fontsize=6.5, color=BAD,
+                arrowprops=dict(arrowstyle="->", color=BAD, lw=0.8))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{c}\n({n} cols)" for c, n in zip(caps, ncols)], fontsize=6.8)
+    ax.set_xlabel("artist / genre one-hot cap (column count)")
+    ax.set_ylabel("AUC (P(rotation))")
+    ax.yaxis.set_major_formatter(afmt)
+    ax.set_ylim(0.705, 0.740)
+    ax.set_title("Identity resolution is a largely-spent lever: the first jump pays,\npast 300/120 the returns are sub-band")
+    ax.legend(loc="lower right", fontsize=6.8)
+    save(fig, "vocab_cap_scan.pdf")
+
+
 if __name__ == "__main__":
     fig_ae_latent_knn()
     fig_svm_mae_vs_r2()
@@ -501,3 +607,5 @@ if __name__ == "__main__":
     fig_mlp_arch_scan()
     fig_burn_topology()
     fig_burn_highvocab()
+    fig_leaf_head_ceiling()
+    fig_vocab_cap_scan()

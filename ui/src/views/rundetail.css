@@ -189,6 +189,40 @@
   font-weight: 600;
 }
 
+/* ---------------- classification predictions ---------------- */
+
+/* Discrete class id in the Actual / Predicted columns: a small neutral badge,
+   not a regression-style scalar. */
+.cls-chip {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0.05em 0.45em;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--hairline);
+  background: var(--surface-sunken);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* The positive class (1) reads as the highlighted outcome. */
+.cls-chip.cls-1 {
+  border-color: var(--accent, var(--ink));
+  color: var(--accent, var(--ink));
+}
+
+.cls-outcome {
+  font-weight: 600;
+}
+
+.cls-outcome.cls-ok {
+  color: var(--good, var(--ink));
+}
+
+.cls-outcome.cls-bad {
+  color: var(--bad);
+}
+
 .expand-cell {
   color: var(--ink-faint);
   width: 1.5rem;

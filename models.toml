@@ -124,3 +124,29 @@ lr = 0.001
 patience = 20
 topology = "embeddings"
 val_fraction = 0.15
+
+[[definitions]]
+name = "burn-ae-classifier-rotation"
+predictor = "burn-ae-classifier"
+dataset_tags = ["ds-20260609-204419-p64-s42"]
+notes = "AE pretrain (177->128->64 latent, MSE) then transplant encoder into a fine-tuned softmax classifier (head [64]). End-to-end fine-tune with early stop."
+created_at = "2026-06-15T15:15:16.932394072+00:00"
+
+[definitions.hyperparams]
+activation = "relu"
+ae_dropout = 0.0
+ae_epochs = 60
+ae_lr = 0.001
+batch_size = 256
+checkpoint_every = 0
+clf_hidden = [64]
+dropout = 0.1
+enc_hidden = [
+    128,
+    64,
+]
+epochs = 150
+freeze_encoder = false
+lr = 0.001
+patience = 20
+val_fraction = 0.15

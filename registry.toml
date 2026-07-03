@@ -808,6 +808,61 @@ min = 0
 max = 1000000
 
 [[predictors]]
+name = "gbdt-leaf-head-classifier"
+display_name = "GBDT-Leaf-Head Classifier"
+language = "Python"
+framework = "XGBoost + scikit-learn"
+description = "Facebook GBDT→LR trick generalized: a gradient-boosted tree (frozen at the xgboost-classifier champion config) emits leaf indices, one-hot-encoded into the tree's partition, then a linear (L2 logistic) or shallow-MLP head trains on top. A ceiling-probe for whether a learned head over tree leaves beats the bare tree. Binary only; no ONNX export."
+command = "predictors/.venv/bin/python"
+args = ["predictors/gbdt-leaf-head-classifier/train.py", "train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predictors/gbdt-leaf-head-classifier/train.py", "predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+supports_stop = false
+
+[[predictors.params]]
+name = "head"
+label = "head over the tree's leaves"
+type = "enum"
+default = "linear"
+options = ["linear", "mlp"]
+
+[[predictors.params]]
+name = "hidden"
+label = "mlp hidden layers (mlp head only)"
+type = "ints"
+default = [128]
+
+[[predictors.params]]
+name = "l2"
+label = "head L2 regularization (logistic inverse-C / mlp alpha)"
+type = "float"
+default = 1.0
+min = 0.0
+max = 100000.0
+
+[[predictors.params]]
+name = "head_lr"
+label = "mlp learning rate (mlp head only)"
+type = "float"
+default = 0.001
+min = 0.000001
+max = 1.0
+
+[[predictors.params]]
+name = "max_iter"
+label = "head max iterations (mlp head early-stops before this)"
+type = "int"
+default = 300
+min = 100
+max = 100000
+
+[[predictors.params]]
+name = "seed"
+type = "int"
+default = 42
+min = 0
+max = 1000000
+
+[[predictors]]
 name = "logistic"
 display_name = "Logistic Regression"
 language = "Python"
@@ -1520,6 +1575,122 @@ max = 0.5
 [[predictors.params]]
 name = "checkpoint_every"
 label = "checkpoint every N epochs (0 = end only)"
+type = "int"
+default = 0
+min = 0
+max = 100000
+
+[[predictors]]
+name = "burn-ae-classifier"
+display_name = "Autoencoder-Pretrained Deep Classifier (burn)"
+language = "Rust"
+framework = "burn"
+description = "Two-phase representation-learning classifier. Phase 1 trains an autoencoder to reconstruct the full assembled feature vector (standardized PCA + numerics continuous block concatenated with raw one-hots) by MSE — an unsupervised bottleneck that must explain the features before seeing the label. Phase 2 transplants the trained encoder into a deep classifier (encoder → latent → MLP head → softmax), fine-tuned end-to-end with cross-entropy (or with the encoder frozen as a fixed feature extractor). Emits calibrated class probabilities scored by AUC / logloss / accuracy / brier. Rust, CPU. Pair with a classification-task domain."
+command = "target/release/predictor-burn-ae-clf"
+args = ["train", "--dataset", "{dataset}", "--output", "{run_dir}", "--hyperparams", "{hyperparams}"]
+predict_args = ["predict", "--model", "{model}", "--input", "{input}", "--output", "{output}"]
+export_args = ["export", "--model", "{model}", "--output", "{output}"]
+supports_stop = true
+
+[[predictors.params]]
+name = "enc_hidden"
+label = "encoder layer widths (last = latent dim)"
+type = "ints"
+default = [128, 64]
+
+[[predictors.params]]
+name = "ae_epochs"
+label = "autoencoder pretraining epochs"
+type = "int"
+default = 60
+min = 1
+max = 100000
+
+[[predictors.params]]
+name = "ae_lr"
+label = "autoencoder learning rate"
+type = "float"
+default = 0.001
+min = 0.000001
+max = 1.0
+
+[[predictors.params]]
+name = "ae_dropout"
+label = "dropout during pretraining"
+type = "float"
+default = 0.0
+min = 0.0
+max = 0.9
+
+[[predictors.params]]
+name = "clf_hidden"
+label = "classifier-head layers after the latent"
+type = "ints"
+default = [64]
+
+[[predictors.params]]
+name = "freeze_encoder"
+label = "freeze the transplanted encoder during fine-tune"
+type = "bool"
+default = false
+
+[[predictors.params]]
+name = "epochs"
+label = "supervised fine-tune epochs"
+type = "int"
+default = 100
+min = 1
+max = 100000
+
+[[predictors.params]]
+name = "lr"
+label = "fine-tune learning rate"
+type = "float"
+default = 0.001
+min = 0.000001
+max = 1.0
+
+[[predictors.params]]
+name = "batch_size"
+type = "int"
+default = 256
+min = 1
+max = 100000
+
+[[predictors.params]]
+name = "dropout"
+label = "classifier-head dropout"
+type = "float"
+default = 0.1
+min = 0.0
+max = 0.9
+
+[[predictors.params]]
+name = "activation"
+label = "hidden-layer activation"
+type = "enum"
+default = "relu"
+options = ["relu", "gelu", "silu", "tanh"]
+
+[[predictors.params]]
+name = "patience"
+label = "early-stop patience (fine-tune epochs, 0 = off)"
+type = "int"
+default = 0
+min = 0
+max = 10000
+
+[[predictors.params]]
+name = "val_fraction"
+label = "early-stop validation fraction (of train)"
+type = "float"
+default = 0.15
+min = 0.05
+max = 0.5
+
+[[predictors.params]]
+name = "checkpoint_every"
+label = "checkpoint every N fine-tune epochs (0 = end only)"
 type = "int"
 default = 0
 min = 0

@@ -453,12 +453,21 @@ function SaveAsDefinition({ run }: { run: RunMeta }) {
 
 /* ---------------- finished run ---------------- */
 
-type PredSort = 'abs_err' | 'pct_err' | 'actual' | 'predicted' | 'row_id'
+type PredSort = 'abs_err' | 'pct_err' | 'actual' | 'predicted' | 'row_id' | 'wrongness' | 'prob'
 
 interface Row extends Prediction {
   err: number
   pct: number
   suspicious: boolean
+  // Classification-derived (present only for classifier runs). `prob` is the
+  // model's probability for the positive class (binary) or for its predicted
+  // class (multiclass); `wrongness` is 0 for a confident-correct call and 1 for
+  // a confident-wrong one, so a descending sort puts the worst calls first.
+  actualClass?: number
+  predClass?: number
+  prob?: number
+  correct?: boolean
+  wrongness?: number
 }
 
 function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof useRunEvents> }) {
@@ -475,7 +484,10 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
   // suspicious-row (percentage-error) tooling, which are regression-only.
   const isClassification = m.mae == null && (m.auc != null || m.accuracy != null)
   const tableRef = useRef<HTMLDivElement>(null)
-  const [sort, setSort] = useState<{ key: PredSort; dir: 1 | -1 }>({ key: 'abs_err', dir: -1 })
+  const [sort, setSort] = useState<{ key: PredSort; dir: 1 | -1 }>(() => ({
+    key: isClassification ? 'wrongness' : 'abs_err',
+    dir: -1,
+  }))
   const [selectedRow, setSelectedRow] = useState<number | null>(null)
   const [excludeSuspicious, setExcludeSuspicious] = useState(false)
 
@@ -496,13 +508,42 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
 
   const rows: Row[] = useMemo(
     () =>
-      (preds.data ?? []).map((p) => ({
-        ...p,
-        err: p.predicted - p.actual,
-        pct: (p.predicted - p.actual) / p.actual,
-        suspicious: suspicious.has(p.row_id),
-      })),
-    [preds.data, suspicious],
+      (preds.data ?? []).map((p) => {
+        const base: Row = {
+          ...p,
+          err: p.predicted - p.actual,
+          pct: (p.predicted - p.actual) / p.actual,
+          suspicious: suspicious.has(p.row_id),
+        }
+        if (!isClassification) return base
+        // Multiclass: `predicted` is the argmax class id, `actual` the true id,
+        // confidence the mass on the predicted class. Binary: `predicted` is
+        // P(class1) (use proba[1] when present); decide at the 0.5 threshold.
+        if ((p.proba?.length ?? 0) > 2) {
+          const predClass = Math.round(p.predicted)
+          const actualClass = Math.round(p.actual)
+          return {
+            ...base,
+            predClass,
+            actualClass,
+            prob: p.proba?.[predClass] ?? 0,
+            correct: predClass === actualClass,
+            wrongness: 1 - (p.proba?.[actualClass] ?? 0),
+          }
+        }
+        const p1 = p.proba && p.proba.length >= 2 ? p.proba[1] : p.predicted
+        const actualClass = p.actual >= 0.5 ? 1 : 0
+        const predClass = p1 >= 0.5 ? 1 : 0
+        return {
+          ...base,
+          predClass,
+          actualClass,
+          prob: p1,
+          correct: predClass === actualClass,
+          wrongness: Math.abs(p1 - actualClass),
+        }
+      }),
+    [preds.data, suspicious, isClassification],
   )
 
   // The scatter identifies points by the numeric row_id; resolve it back to the
@@ -626,6 +667,7 @@ function FinishedRun({ run, events }: { run: RunMeta; events: ReturnType<typeof 
       <div ref={tableRef}>
         <PredictionsTable
           rows={rows}
+          isClassification={isClassification}
           items={items}
           loading={preds.loading}
           error={preds.error}
@@ -857,6 +899,7 @@ const PAGE = 100
 
 function PredictionsTable({
   rows,
+  isClassification,
   items,
   loading,
   error,
@@ -867,6 +910,7 @@ function PredictionsTable({
   setSelectedRow,
 }: {
   rows: Row[]
+  isClassification: boolean
   items: Items | null
   loading: boolean
   error: string | null
@@ -894,6 +938,10 @@ function PredictionsTable({
           return r.predicted
         case 'row_id':
           return r.row_id
+        case 'wrongness':
+          return r.wrongness ?? 0
+        case 'prob':
+          return r.prob ?? 0
       }
     }
     const f = filter.trim().toLowerCase()
@@ -979,8 +1027,17 @@ function PredictionsTable({
               {th('row_id', cap(domain.project.entity_noun), false)}
               {th('actual', 'Actual')}
               {th('predicted', 'Predicted')}
-              {th('abs_err', 'Error')}
-              {th('pct_err', '% error')}
+              {isClassification ? (
+                <>
+                  {th('prob', domain.metrics.value_unit)}
+                  {th('wrongness', 'Outcome')}
+                </>
+              ) : (
+                <>
+                  {th('abs_err', 'Error')}
+                  {th('pct_err', '% error')}
+                </>
+              )}
               <th>
                 <span className="sr-only">Details</span>
               </th>
@@ -991,6 +1048,7 @@ function PredictionsTable({
               <PredRow
                 key={r.rid}
                 row={r}
+                isClassification={isClassification}
                 item={items?.[r.rid] ?? null}
                 expanded={expanded === r.row_id}
                 highlighted={selectedRow === r.row_id}
@@ -1017,12 +1075,14 @@ function PredictionsTable({
 
 function PredRow({
   row,
+  isClassification,
   item,
   expanded,
   highlighted,
   onToggle,
 }: {
   row: Row
+  isClassification: boolean
   item: Items[string] | null
   expanded: boolean
   highlighted: boolean
@@ -1039,21 +1099,42 @@ function PredRow({
         <td className="track-cell">
           <ItemIdentity item={item} rowId={row.rid} />
         </td>
-        <td className="num-col num">{fmtMoney(row.actual)}</td>
-        <td className="num-col num">{fmtMoney(row.predicted)}</td>
-        <td className="num-col num">{fmtMoneyDelta(row.err)}</td>
-        <td className={`num-col num pct-cell ${Math.abs(row.pct) >= 0.5 ? 'pct-large' : ''}`}>
-          {fmtSignedPct(row.pct)}
-          {row.suspicious && (
-            <span
-              className="sus-glyph"
-              title={`Suspicious: robust outlier on % error, likely a mislabeled ${domain.project.entity_noun}`}
-            >
-              {' '}
-              ⚠
-            </span>
-          )}
-        </td>
+        {isClassification ? (
+          <>
+            <td className="num-col num">
+              <span className={`cls-chip cls-${row.actualClass}`}>{row.actualClass}</span>
+            </td>
+            <td className="num-col num">
+              <span className={`cls-chip cls-${row.predClass}`}>{row.predClass}</span>
+            </td>
+            <td className="num-col num">{(row.prob ?? 0).toFixed(3)}</td>
+            <td className="num-col">
+              {row.correct ? (
+                <span className="cls-outcome cls-ok" title="Correct">✓</span>
+              ) : (
+                <span className="cls-outcome cls-bad" title="Misclassified">✗</span>
+              )}
+            </td>
+          </>
+        ) : (
+          <>
+            <td className="num-col num">{fmtMoney(row.actual)}</td>
+            <td className="num-col num">{fmtMoney(row.predicted)}</td>
+            <td className="num-col num">{fmtMoneyDelta(row.err)}</td>
+            <td className={`num-col num pct-cell ${Math.abs(row.pct) >= 0.5 ? 'pct-large' : ''}`}>
+              {fmtSignedPct(row.pct)}
+              {row.suspicious && (
+                <span
+                  className="sus-glyph"
+                  title={`Suspicious: robust outlier on % error, likely a mislabeled ${domain.project.entity_noun}`}
+                >
+                  {' '}
+                  ⚠
+                </span>
+              )}
+            </td>
+          </>
+        )}
         <td className="expand-cell" aria-hidden>
           {expanded ? '▾' : '▸'}
         </td>

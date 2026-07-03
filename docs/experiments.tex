@@ -55,7 +55,7 @@ ranking --- \texttt{embeddings} now \emph{beats} \texttt{mlp} (a $+0.0130$ swing
 that reverses the prior result, confirming the starvation hypothesis) --- and
 lifts the net into the in-dataset tree tier (AUC \num{0.7192}, within $\sim$1
 band of \texttt{catboost}), the first ANN to clear the rotation save bar, saved
-as \texttt{burn-deep-embeddings-highvocab}. Section~\ref{sec:anns} consolidates
+as \texttt{burn-deep-embeddings-highvocab}. An eighth campaign then probes the inverse lever and refutes it: the classic Facebook GBDT$\to$LR trick generalized to GBDT$\to$MLP --- training a fresh head on the frozen champion tree's one-hot leaf indices --- caps \num{1.8}--\num{2.4} noise bands \emph{below} the bare xgboost champion (best head AUC \num{0.6978}) with badly broken calibration, a seventh convergent confirmation that learned representations layered on the trees do not help. A ninth campaign then probes how far the standing identity-resolution lever can go: a vocab-cap scan on the bare GBDT, holding the frozen champion config and moving \emph{only} the artist/genre one-hot cardinality, finds the lever \emph{largely spent} --- the first jump ($60/40\to300/120$) carries the gain, and past 300/120 each step pays only sub-band returns; xgboost reaches a new in-lineage single-split best AUC \num{0.7349} at 1000/300 (only $+0.005$, $\sim$0.4 band, over the anchor --- no save fired), \texttt{catboost} tracks it, and the full-vocabulary point could not be built (host memory ceiling). Section~\ref{sec:anns} consolidates
 why artificial neural nets structurally underperform on this one-hot-heavy
 feature matrix, how the representation-aware net resolves the diagnosis, and how
 enough identity resolution finally lets the embedding topology pay off.
@@ -1192,9 +1192,224 @@ knowing before reading individual one-hot importances on this matrix. The saved
 the first tree-tier ANN and a natural family-diversity candidate.
 \emph{Source: \texttt{2026-06-12-high-vocab-topology.md}.}
 
+\subsection{Refuted: a GBDT-leaf-embedding head cannot recover the tree that generated its features}
+\label{sec:leaf-head}
+\emph{Rationale.} The ANN thread above closed on a clean lesson --- a learned
+representation fed downstream of the identity one-hots does not buy ranking
+power the trees do not already have (the AE-latent dilution of
+Section~\ref{sec:ae-blend}; entity embeddings starved unless cardinality is
+high, Section~\ref{sec:anns-burn}). This campaign stress-tests that lesson at
+its hardest point with the classic Facebook GBDT$\to$LR trick, generalized to
+GBDT$\to$MLP. The frozen champion tree --- the registered
+\texttt{xgboost-classifier-rotation-p64} config, \emph{hard-frozen}, not a
+tunable --- emits, for each row, the index of the leaf it falls into in every
+one of its 500 boosted trees; those indices are one-hot-encoded into the tree's
+own learned axis-aligned partition ($\sim$10k leaf-membership columns), and a
+fresh head (an $\ell_2$-logistic linear head, or a shallow MLP) is trained on
+top. The input to the head is thus the tree's \emph{own} partition; the
+hypothesis --- a seventh test of the convergent finding --- was that even this
+would \emph{not} beat the bare tree, the expected refutation being the citable
+finding. All arms ran on the 60/40 full-64-d matrix
+(\dsid{ds-20260609-204419-p64-s42}, seed 42); the only valid reference is the
+in-dataset \num{0.7204} champion, never the \num{0.7429} DS-META or
+\num{0.7299} high-vocab numbers (different matrices).
+
+\emph{Results.} Refuted exactly as predicted (Table~\ref{tab:leaf-head};
+Figure~\ref{fig:leaf-head}). The control C0
+(\runid{run-20260615-151551-f2911-xgboost-classifier}) reproduced the champion
+to all 16 digits (\num{0.7204383403100314}), so the determinism gate passed and
+the treatments are interpretable. Every head then capped \emph{below} the bare
+tree by more than one noise band: GBDT$\to$linear at AUC \num{0.6978}
+($-0.0227$, $\sim$1.8 bands), GBDT$\to$MLP$[256,128]$ at \num{0.6921}
+($\sim$2.2 bands), GBDT$\to$MLP$[128]$ at \num{0.6897} ($\sim$2.4 bands) --- the
+best of them is itself \num{0.0100} below the refutation threshold
+(champion $-$ band $=$ \num{0.7078}). The in-band-tie branch (which would have
+fired a 3-seed spot-check) and the win branch ($>\num{0.7330}$) never triggered;
+no definition was saved. The linear head --- the literal Facebook recipe --- is
+the best of the three, and adding MLP capacity over the leaf one-hots does not
+recover the tree, consistent with the recipe's original framing as a cheap
+\emph{linear} trick. Worse than the AUC deficit, \emph{every head is badly
+mis-calibrated}: log-loss \num{0.8162}--\num{1.3119} and Brier
+\num{0.2603}--\num{0.2951} against the tree's \num{0.6075} / \num{0.2109}. The
+$\ell_2$-logistic head at the default inverse-$C{=}1$ is under-regularized over
+$\sim$10k sparse leaf indicators --- it drives a handful of leaf weights to
+large magnitudes and emits over-confident probabilities, the same
+sklearn-pyramid over-confidence signature (log-loss far above the trees' while
+AUC is only modestly behind) seen in Section~\ref{sec:anns-signature}, and a
+calibration red flag for best-model-selector should any of these runs ever be
+considered for the group.
+
+\begin{table}[ht]
+  \centering
+  \caption{The GBDT-leaf-head ceiling probe
+  (\dsid{ds-20260609-204419-p64-s42}, seed 42; the leaf-emitting GBDT is the
+  frozen champion config in every treatment, only the head varies). All four
+  runs succeeded. AUC higher-better; log-loss and Brier lower-better. Control
+  (winner) bolded; best cell per metric bolded; treatment rows sorted by AUC.
+  Refutation threshold (champion $-2\sigma$) $=\num{0.7078}$: every head is
+  below it.}
+  \label{tab:leaf-head}
+  \begin{tabular}{llcccc}
+    \toprule
+    Arm / run id & Head & AUC & log-loss & accuracy & Brier \\
+    \midrule
+    \best{C0} (\runid{run-20260615-151551-f2911-xgboost-classifier}) & \best{bare tree (champion)} & \best{0.7204} & \best{0.6075} & \best{0.6585} & \best{0.2109} \\
+    T1 (\runid{run-20260615-151551-b4db5-gbdt-leaf-head-classifier}) & linear ($\ell_2$ logistic, l2 1.0) & 0.6978 & 1.3119 & 0.6441 & 0.2944 \\
+    T3 (\runid{run-20260615-151551-44b1d-gbdt-leaf-head-classifier}) & mlp $[256,128]$, head\_lr \num{1e-3} & 0.6921 & 1.1813 & 0.6396 & 0.2951 \\
+    T2 (\runid{run-20260615-151551-9d655-gbdt-leaf-head-classifier}) & mlp $[128]$, head\_lr \num{1e-3} & 0.6897 & 0.8162 & 0.6356 & 0.2603 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{leaf_head_ceiling}
+  \caption{The leaf-embedding stack is refuted on both axes. \emph{Left:} every
+  GBDT$\to$head arm caps below the bare champion tree on AUC --- the best
+  (GBDT$\to$linear, \num{0.6978}) is itself a full band below the refutation
+  threshold (the dashed line at champion $-2\sigma=\num{0.7078}$; the shaded
+  strip is the band). \emph{Right:} and every head is mis-calibrated, with
+  log-loss \num{0.82}--\num{1.31} far above the tree regime (\num{0.61}, dotted)
+  and past the random base-rate baseline (\num{0.69}, dashed) for the two
+  worst. Learning a head over the tree's own one-hot leaf indices is strictly
+  lossier than reading the tree's leaf-value sums directly.}
+  \label{fig:leaf-head}
+\end{figure}
+
+\emph{Interpretation.} The refutation is decisive and mechanistic. The tree's
+additive leaf-value scoring already weights every leaf \emph{jointly} across 500
+boosting rounds with shrinkage; re-encoding those leaves as one-hot membership
+indicators and fitting a head \emph{post-hoc} discards the boosting structure
+and re-estimates it worse. The leaf one-hots are a strictly lossier view of a
+tree that already scores better directly --- the dense head cannot even recover
+the tree that generated its own features. This is the same family as the
+AE-latent dilution (Section~\ref{sec:ae-blend}) and the dense-head ceiling
+(Section~\ref{sec:anns}), pushed to its limit: here the head's \emph{input} is
+the tree's optimal partition, and it still caps $\sim$2 bands below. Re-tuning
+the head regularization could tame the over-confidence but cannot close an
+$\sim$1.8-band AUC deficit, so the leaf-head family is closed for rotation. This
+is the seventh convergent confirmation that the durable lever is identity
+\emph{resolution} (raising vocab caps, which already lifted xgboost to
+\num{0.7299} on the high-vocab matrix), not new heads or representations layered
+on the tree.
+\emph{Source: \texttt{2026-06-15-gbdt-leaf-head-ceiling-probe.md}.}
+
+\subsection{The identity-resolution vocab-cap scan: a largely-spent lever}
+\label{sec:vocab-cap}
+\emph{Rationale.} Every campaign above closes on the same standing lever ---
+identity \emph{resolution}: raising the artist/genre vocabulary caps so the
+\texttt{\_\_other\_\_} tail gets real one-hot columns, which already lifted
+xgboost from \num{0.7204} (60/40) to \num{0.7299} (300/120,
+Section~\ref{sec:anns-highvocab}) and flipped the embedding net into the tree
+tier. But only \emph{two} points existed on that cap$\to$AUC curve, and the
+high end was the in-lineage record. This campaign maps where the lever stops
+paying. It holds the registered champion \texttt{xgboost-classifier-rotation-p64}
+config \emph{frozen} (\texttt{catboost} defaults as a secondary arm), holds
+\emph{everything else} fixed --- same \num{23529}-row corpus, same split seed 42
+(\num{18823} train / \num{4706} test), same PCA64, same field block --- and
+moves the \emph{single} axis \texttt{vocab\_top\_n}, adding three higher-cap
+points: 500/200 (777 cols), 1000/300 (1377 cols) and the full vocabulary,
+5594/962 (6633 cols). The hypothesis to discriminate: \emph{saturation} (gain
+per step $<$ one band) versus \emph{reversal} (AUC drops as singleton-artist
+columns inject memorizable variance).
+
+\emph{Results.} All eight launched runs succeeded; the controls reproduced both
+anchors to four digits (60/40 xgboost \num{0.72044} versus reference
+\num{0.7204}, $\Delta+0.00004$; 300/120 xgboost \num{0.72988} versus
+\num{0.7299}, $\Delta-0.00002$), so the whole curve sits under one consistent
+measurement (Table~\ref{tab:vocab-cap}; Figure~\ref{fig:vocab-cap}). xgboost
+rose to a new in-lineage single-split best of \textbf{\num{0.73490}} at 1000/300
+(\runid{run-20260615-163803-e75be-xgboost-classifier}), but the step structure
+tells the real story: the jump $60\to300$ was $+0.00944$ ($+0.75$ band), then
+$300\to500$ was \emph{flat} ($-0.00022$, within noise) and $500\to1000$ was
+$+0.00524$ ($+0.42$ band). The best point is only $+0.00502$ ($\sim$0.40 band)
+over the 0.7299 anchor --- a \emph{sub-band} improvement, well short of the
+$+0.0126$ a confident beat would require. \texttt{catboost} tracks xgboost
+qualitatively at every cap (\num{0.71105}$\to$\num{0.72516}$\to$\num{0.72372}%
+$\to$\num{0.72633}), staying $\sim$0.005--0.009 below it throughout and rising
+just as gently after 300/120 --- its native categorical handling does
+\emph{not} scale better at high cardinality. The top-of-curve all-vocab point
+(6633 cols) \textbf{could not be built}: two POST attempts each returned a
+build id but died mid-materialization against the host memory ceiling
+($\sim$2.3 GB free of 15 GB under concurrent load), leaving no dataset and no
+artifacts. That is an infrastructure ceiling, \emph{not} a modeling result, and
+the curve's top end is recorded as unmeasured.
+
+\begin{table}[ht]
+  \centering
+  \caption{The vocab-cap scan on the bare GBDT
+  (frozen champion xgboost config; \texttt{catboost} defaults; the only axis is
+  \texttt{vocab\_top\_n}, all else byte-identical to the 300/120 anchor: same
+  \num{23529} rows, split seed 42, PCA64, field block). Sorted by artist/genre
+  cap. AUC higher-better; log-loss and Brier lower-better. The new in-lineage
+  single-split best run is bolded; best cell per metric bolded. The all-vocab
+  row is the failed build (host memory ceiling, two attempts), recorded as an
+  infrastructure failure, not a result. AUC band $2\sigma\approx 0.0126$.}
+  \label{tab:vocab-cap}
+  \begin{tabular}{lllccccl}
+    \toprule
+    Run id & cap & cols & model & AUC & log-loss & Brier & Note \\
+    \midrule
+    \runid{run-20260615-163751-de9a4-xgboost-classifier} & 60/40    & 177  & xgb & 0.72044 & 0.60754 & 0.21087 & control \\
+    \runid{run-20260615-163803-3391f-catboost-classifier} & 60/40   & 177  & cat & 0.71105 & 0.61324 & 0.21316 & control \\
+    \runid{run-20260615-163803-536d5-xgboost-classifier} & 300/120  & 497  & xgb & 0.72988 & 0.60223 & 0.20803 & anchor \\
+    \runid{run-20260615-163803-6f170-catboost-classifier} & 300/120 & 497  & cat & 0.72516 & 0.60681 & 0.20994 & anchor \\
+    \runid{run-20260615-163803-1a0ba-xgboost-classifier} & 500/200  & 777  & xgb & 0.72966 & 0.60392 & 0.20856 & flat ($-0.00022$) \\
+    \runid{run-20260615-163803-1fae3-catboost-classifier} & 500/200 & 777  & cat & 0.72372 & 0.60894 & 0.21068 & dips below own 300/120 \\
+    \best{\runid{run-20260615-163803-e75be-xgboost-classifier}} & \best{1000/300} & \best{1377} & \best{xgb} & \best{0.73490} & \best{0.60070} & \best{0.20700} & \best{new in-lineage best (sub-band)} \\
+    \runid{run-20260615-163803-9ed65-catboost-classifier} & 1000/300 & 1377 & cat & 0.72633 & 0.60931 & 0.21068 & catboost best on its curve \\
+    (build failed) & all 5594/962 & 6633 & --- & --- & --- & --- & NOT built (memory ceiling) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.8\textwidth]{vocab_cap_scan}
+  \caption{The identity-resolution lever is largely spent. Holding the frozen
+  champion config and moving only the artist/genre one-hot cap, the cap$\to$AUC
+  curve climbs sharply on the first jump ($60/40\to300/120$, $+0.75$ band) and
+  then \emph{plateaus}: $300\to500$ is flat ($-0.00022$, within noise) and
+  $500\to1000$ recovers only $+0.42$ band, so the new in-lineage single-split
+  best (\num{0.73490} at 1000/300) clears the 300/120 anchor by just $+0.00502$
+  ($\sim$0.40 band, inside the shaded $+2\sigma$ envelope and so a \emph{sub-band}
+  improvement). \texttt{catboost} (dashed) tracks xgboost at every cap, $\sim$%
+  0.005--0.009 below --- native categorical handling buys no high-cardinality
+  edge. The full-vocabulary point (6633 cols, red $\times$) is \emph{unmeasured}:
+  its build hit a host memory ceiling on both attempts, an infrastructure
+  failure rather than a modeling result.}
+  \label{fig:vocab-cap}
+\end{figure}
+
+\emph{Interpretation.} The verdict is a clean ``not saturated, not reversed,
+but diminishing.'' No interior point fell a full band below the anchor (the
+lowest, 500/200, is $-0.00022$), so the reversal hypothesis does not fire ---
+the singleton-artist columns at high cardinality do \emph{not} hurt the tree,
+consistent with the project's no-blow-up prior that axis-aligned splits tolerate
+collinear, mostly-zero one-hots by simply not splitting on the useless ones. But
+the gains past the first jump are all sub-band and wobble up and down inside the
+$2\sigma=0.0126$ envelope: the curve past 300/120 is better read as a flat
+plateau with single-split jitter than as a monotone climb, which is exactly why
+the decision rule guards a save behind a $\ge$1-band beat plus a 3-seed confirm.
+The best point's $+0.00502$ is in the ``likely better, needs confirmation''
+window, so \textbf{the 3-seed confirm did not fire and no definition was saved};
+the cross-matrix DS-META champion (\num{0.7429}) holds rank 1 unchanged, and the
+1000/300 point auto-promoted to best-models rank 3 without displacing any
+registered model. The honest read for future work: raw vocab-cap \emph{height}
+is a largely-spent lever on this corpus --- the big payoff was the first jump,
+already on record. The catboost agreement seals it: two independent tree
+families say the marginal columns past 300/120 carry little independent signal.
+The residual rotation signal is the behavioral/contextual part no
+song-metadata cardinality can capture, so identity work should pivot from
+bigger caps to resolution \emph{quality} --- artist-followers / popularity
+interactions, genre hierarchy --- and the standing ``identity resolution is the
+lever'' guidance should now read ``weak and plateauing past 300/120, with the
+top end still unmeasured pending a wide build on a quiescent host.''
+\emph{Source: \texttt{2026-06-15-vocab-cap-scan-gbdt.md}.}
+
 \section{Conclusions}
 \label{sec:conclusions}
-Seven Jun-2026 campaigns on the pivoted rotation target converge on a single
+Nine Jun-2026 campaigns on the pivoted rotation target converge on a single
 story. (1) Across two feature campaigns and three model-family scans (two
 corpora), every dense modality and every dense distance/margin/dense-net family
 loses to categorical identity one-hots read by gradient-boosted trees --- the
@@ -1240,9 +1455,11 @@ ANN-pitfalls thread is now closed: a representation-aware net that consumes raw
 one-hots is calibrated in the tree regime, and given enough identity resolution
 its embedding topology reaches the tree tier --- identity \emph{resolution} was
 the lever all along.
+(7) A final probe then tested the inverse of the lever --- whether a learned representation \emph{derived from} the tree, rather than fed alongside it, could beat the bare tree --- and refuted it: the Facebook GBDT$\to$LR trick generalized to GBDT$\to$MLP, with a fresh head trained on the frozen champion's one-hot leaf indices, caps \num{1.8}--\num{2.4} bands below the bare xgboost champion (best head AUC \num{0.6978}) and is badly mis-calibrated on every head, because the leaf one-hots are a strictly lossier view of a tree whose additive leaf-value scoring already weights the leaves optimally (Section~\ref{sec:leaf-head}). The dense head cannot even recover the tree that generated its features --- the seventh convergent confirmation that identity resolution, not new heads or representations layered on the trees, is the durable lever.
+(8) Finally, the standing identity-resolution lever was mapped to its edge: a vocab-cap scan on the bare GBDT --- frozen champion config, only \texttt{vocab\_top\_n} moved --- shows the lever is \emph{largely spent} (Section~\ref{sec:vocab-cap}). The first cardinality jump ($60/40\to300/120$) carries the gain; past 300/120 every step is sub-band, the curve plateaus inside the noise envelope, xgboost reaches only \num{0.7349} at 1000/300 ($+0.005$, $\sim$0.4 band over the anchor, so no save fired), and \texttt{catboost} tracks it --- two tree families agreeing the marginal high-cardinality columns carry little independent signal. Not saturated and not reversed, but diminishing: raw cap height is no longer the durable lever, and future identity work should target resolution \emph{quality} (follower/popularity interactions, genre hierarchy) rather than bigger caps --- with the full-vocabulary point (6633 cols) still unmeasured against a host memory ceiling.
 
 \section{Source reports}
-This synthesis consolidates seven campaign reports from \texttt{experiments/}:
+This synthesis consolidates nine campaign reports from \texttt{experiments/}:
 \begin{itemize}
   \item \texttt{2026-06-09-ae-xgboost-blend.md} --- autoencoder-latent +
     XGBoost blend on rotation (Section~\ref{sec:ae-blend}).
@@ -1266,6 +1483,11 @@ This synthesis consolidates seven campaign reports from \texttt{experiments/}:
     \texttt{embeddings}$>$\texttt{mlp} and lifts the saved net into the
     in-dataset tree tier, the first ANN to clear the rotation save bar
     (Section~\ref{sec:anns-highvocab}).
+  \item \texttt{2026-06-15-gbdt-leaf-head-ceiling-probe.md} --- the Facebook
+    GBDT$\to$LR trick generalized to GBDT$\to$MLP; every leaf-embedding head
+    caps below the bare xgboost champion with broken calibration, the seventh
+    convergent refutation (Section~\ref{sec:leaf-head}).
+  \item \texttt{2026-06-15-vocab-cap-scan-gbdt.md} --- the identity-resolution vocab-cap scan on the bare GBDT; maps the cap$\to$AUC curve and finds the lever largely spent past 300/120 (sub-band gains, no save fired), with the all-vocab point unmeasured at the host memory ceiling (Section~\ref{sec:vocab-cap}).
 \end{itemize}
 
 \end{document}

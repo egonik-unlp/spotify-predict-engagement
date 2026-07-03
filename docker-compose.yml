@@ -1,10 +1,12 @@
 # Infrastructure for a lensing instance.
 #
-#   docker compose up -d postgres --wait     metadata database (zig build db-up)
-#   docker compose --profile qdrant up -d    + a local Qdrant for greenfield
-#                                            bootstraps (the existing corpus
-#                                            lives in an external Qdrant; the
-#                                            default -Dqdrant-url is unchanged)
+#   docker compose --profile qdrant up -d postgres qdrant --wait   (zig build db-up)
+#       metadata database (Postgres) + the local Qdrant corpus.
+#
+# This instance hosts its OWN Qdrant on :6335 (the `qdrant` profile); it does
+# NOT depend on any sibling/external Qdrant. The qdrant_storage volume starts
+# empty on a fresh checkout — load the corpus with a Qdrant snapshot restore
+# or pipeline/refresh_corpus.sh before serving.
 #
 # Postgres holds the server's metadata/parameter state (model definitions,
 # run metas + metrics, promoted-model records, dataset index, hp presets).

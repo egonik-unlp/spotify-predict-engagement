@@ -4029,6 +4029,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "lensing-predictor-burn-ae-clf"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "burn",
+ "clap",
+ "lensing-core",
+ "lensing-onnx",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lensing-predictor-burn-cnn"
 version = "0.1.0"
 dependencies = [

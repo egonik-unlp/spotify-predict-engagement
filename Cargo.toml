@@ -9,6 +9,7 @@ members = [
     "crates/predictor-burn-mlp",
     "crates/predictor-burn-cnn",
     "crates/predictor-burn-deep-clf",
+    "crates/predictor-burn-ae-clf",
     "crates/predictor-blend",
 ]
 

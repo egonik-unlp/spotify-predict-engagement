@@ -79,13 +79,14 @@ pub fn build(b: *std.Build) void {
     b.getInstallStep().dependOn(ui);
 
     // ---------------- db-up / db-down: the metadata database + corpus ----------------
-    // docker compose owns the Postgres lifecycle; --wait blocks on the
-    // healthcheck so dependents always see an accepting socket. This instance
-    // reads the SHARED corpus from an external Qdrant (the sibling's container
-    // on :6335, set via -Dqdrant-url), so the local `qdrant` profile is NOT
-    // started here — only Postgres.
+    // docker compose owns both the Postgres and Qdrant lifecycle; --wait blocks
+    // on the healthchecks so dependents always see an accepting socket. This
+    // instance hosts its OWN Qdrant corpus locally (the `qdrant` profile),
+    // serving spotify_tracks on :6335 — no external/sibling container required.
+    // A fresh qdrant_storage volume starts EMPTY: populate it via a Qdrant
+    // snapshot restore or pipeline/refresh_corpus.sh.
     const compose_up = b.addSystemCommand(&.{
-        "docker", "compose", "up", "-d", "postgres", "--wait",
+        "docker", "compose", "--profile", "qdrant", "up", "-d", "postgres", "qdrant", "--wait",
     });
     compose_up.setCwd(b.path("."));
     compose_up.stdio = .inherit;
