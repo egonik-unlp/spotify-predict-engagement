@@ -1,7 +1,7 @@
 {
   "framework": "lensing",
   "version": "0.1.0",
-  "source_commit": "55144e9d5aadd7cc6fb3828b41999930ce083344",
+  "source_commit": "93c8ca1b82fc8371020bd0c87c40afd226476ffb",
   "source_dirty": true,
   "source_repo": "git@github.com:egonik-unlp/lensing.git",
   "schema_version": 1,
@@ -366,6 +366,10 @@
       "sha256": "97ac4b81aa9028c505e81d281d7613677fc21b3a76065f711192bf64e71b2d39",
       "kind": "rendered"
     },
+    ".agents/skills/showcase/SKILL.md": {
+      "sha256": "ef7f2d8539192ee995f804edf9edabe2a9defe48104180b458c00673c9982375",
+      "kind": "rendered"
+    },
     ".agents/skills/upstream-contribute/SKILL.md": {
       "sha256": "fb034be215a31bdb9ff0ff0bbcb1c6677398e218429e9215ede24b837b3d3ba5",
       "kind": "rendered"
@@ -387,7 +391,7 @@
       "kind": "rendered"
     },
     ".claude/agents/experiment-runner.md": {
-      "sha256": "c5e48201e9adaacf6916ab9092c18fdbcad6a131a86e19d7f8a2de6e78c38aa7",
+      "sha256": "4fbbcd3313dd1ad9e6c65f76d2a47a14460a1d08aac5805cb6fd77e9afce30f7",
       "kind": "rendered"
     },
     ".claude/agents/listing-generator.md": {
@@ -396,6 +400,10 @@
     },
     ".claude/agents/report-curator.md": {
       "sha256": "3aace7c0ac048a6753cba440c9f58f5e9d2f5c1f7643c9131d8652601298c24d",
+      "kind": "rendered"
+    },
+    ".claude/agents/showcase-builder.md": {
+      "sha256": "b9e0152cd49dc6d31599e83b5da5f4a290b88bb1c29313e53ddac9d7325c02b4",
       "kind": "rendered"
     },
     ".claude/agents/upstream-contribute.md": {
@@ -758,6 +766,10 @@
       "sha256": "97ac4b81aa9028c505e81d281d7613677fc21b3a76065f711192bf64e71b2d39",
       "kind": "rendered"
     },
+    ".claude/skills/showcase/SKILL.md": {
+      "sha256": "ef7f2d8539192ee995f804edf9edabe2a9defe48104180b458c00673c9982375",
+      "kind": "rendered"
+    },
     ".claude/skills/upstream-contribute/SKILL.md": {
       "sha256": "fb034be215a31bdb9ff0ff0bbcb1c6677398e218429e9215ede24b837b3d3ba5",
       "kind": "rendered"
@@ -1114,6 +1126,10 @@
       "sha256": "97ac4b81aa9028c505e81d281d7613677fc21b3a76065f711192bf64e71b2d39",
       "kind": "rendered"
     },
+    ".gemini/skills/showcase/SKILL.md": {
+      "sha256": "ef7f2d8539192ee995f804edf9edabe2a9defe48104180b458c00673c9982375",
+      "kind": "rendered"
+    },
     ".gemini/skills/upstream-contribute/SKILL.md": {
       "sha256": "fb034be215a31bdb9ff0ff0bbcb1c6677398e218429e9215ede24b837b3d3ba5",
       "kind": "rendered"
@@ -1135,7 +1151,7 @@
       "kind": "framework"
     },
     "Cargo.toml": {
-      "sha256": "cddac098bcc9cd1ce93585a743d9321c7810f1acc49a3935d3e84c61ed54ad1e",
+      "sha256": "23ef48ad30a9cf05fbafe3d171d2cf6486bdeb25c7ac25030193fa9dcf898013",
       "kind": "framework"
     },
     "DESIGN.md": {
@@ -1143,7 +1159,7 @@
       "kind": "framework"
     },
     "README.md": {
-      "sha256": "1c5dda8bacdad65188524bf1fc76d38249ab0812be84d66853c46cbd95069290",
+      "sha256": "2f7271f5aec4b58318c31ec6db7e97366c4a6929349276cb8e1bd6520b8b5b71",
       "kind": "framework"
     },
     "VERSION": {
@@ -1171,7 +1187,7 @@
       "kind": "framework"
     },
     "agents-src/agents/experiment-runner.md": {
-      "sha256": "c1622322ddb4735b6110edf544be6616c5c4b906ec0359104e963a3156b6c03e",
+      "sha256": "5ca76327bf9327152f6433230798b408b77e15a4d3643bc33103e1c488bcfad4",
       "kind": "framework"
     },
     "agents-src/agents/listing-generator.md": {
@@ -1180,6 +1196,10 @@
     },
     "agents-src/agents/report-curator.md": {
       "sha256": "6e4117f847276ec254629503a75fc9243474b51997a71976e7b799c352990913",
+      "kind": "framework"
+    },
+    "agents-src/agents/showcase-builder.md": {
+      "sha256": "3210124b85bad4d068ff58b2fc56325d6ba3c754c5fd317c12d592ae6978440c",
       "kind": "framework"
     },
     "agents-src/agents/upstream-contribute.md": {
@@ -1218,6 +1238,10 @@
       "sha256": "962104da0e4a5334bc42f1fb76628675d8c2934c2642219eeecb1c72077555bd",
       "kind": "framework"
     },
+    "agents-src/skills/showcase/SKILL.md": {
+      "sha256": "5b5b42b6d1ff7274d7ff3be951089618957a6f2d9bc65df0f862801f19471699",
+      "kind": "framework"
+    },
     "agents-src/skills/upstream-contribute/SKILL.md": {
       "sha256": "17a7ffd7f8f7fecf8938775fc697b1e4fdeb1d660aa1027b62bf2ea53bb06982",
       "kind": "framework"
@@ -1226,8 +1250,16 @@
       "sha256": "7f86729eee30d460a7d5b4a75ba9adddc8a928d837c8d4b1054ecb78218e310a",
       "kind": "framework"
     },
+    "assets/lattice-data.svg": {
+      "sha256": "701135ef439cf17ee2d30ee3a7d77cd177e33510b0d52e1e5438604620cc403f",
+      "kind": "framework"
+    },
+    "assets/lattice.svg": {
+      "sha256": "5866ad2f06c62f513d9fbf31618b6ab3684677023a37498d8616db7e9046ded5",
+      "kind": "framework"
+    },
     "assets/logo.svg": {
-      "sha256": "f56648aea8cd4f7c7ad16e892e9c2cf53ea2f68643e78bf3206ada9ae1f4894f",
+      "sha256": "ae019e6a18c89cde779db9f1629d564c540cbfb857d22a799583717fece68e0d",
       "kind": "framework"
     },
     "assets/mark.svg": {
@@ -1235,7 +1267,7 @@
       "kind": "framework"
     },
     "build.zig": {
-      "sha256": "8d0588af5deeeadb839e3edf75f5db38eb5070812d821bf885870e00236b5c41",
+      "sha256": "6e2ba154d6edb5b338be4b3846c889c5805929f87399c6f32cb3cf245a17e4a0",
       "kind": "framework"
     },
     "crates/lensing-core/Cargo.toml": {
@@ -1324,6 +1356,26 @@
     },
     "crates/lensing-db/src/sink.rs": {
       "sha256": "c77b12e28574bf0000c4a8c3c32844d94a2f75b196a085ba600c67c17b793c03",
+      "kind": "framework"
+    },
+    "crates/lensing-intake/Cargo.toml": {
+      "sha256": "8a00d6d104a8b611f1febfa796e38e929b9dd8fe8955e8bc975fb6017cf69d03",
+      "kind": "framework"
+    },
+    "crates/lensing-intake/pipeline.example.toml": {
+      "sha256": "7714213fc9e292c36723f99fd984350d0e237ec46b754f53f27277a655bc1d6f",
+      "kind": "framework"
+    },
+    "crates/lensing-intake/src/config.rs": {
+      "sha256": "6540b7c4e35ac8185eaa59c5d7e366c4e1eccda4bde609b80af22647c97bb9dd",
+      "kind": "framework"
+    },
+    "crates/lensing-intake/src/lib.rs": {
+      "sha256": "20839bc31a70853502ca338b651556db039152446d9757ea2132662a2ea0cadb",
+      "kind": "framework"
+    },
+    "crates/lensing-intake/src/main.rs": {
+      "sha256": "500a5b0e7abba1729adcfaefd47d46eab7c95184280518ef85f3d341a7f65e4f",
       "kind": "framework"
     },
     "crates/lensing-onnx/Cargo.toml": {
@@ -1642,6 +1694,10 @@
       "sha256": "98c2bfc88b855422339ea37d4acf0b9e854714e4ba8957723ff98f1014222803",
       "kind": "framework"
     },
+    "ui/public/brand/lensing-icons.svg": {
+      "sha256": "534aa3f34eb4991a548af5d923d74da40a3a3949547e342cd217e2e9055c6fb3",
+      "kind": "framework"
+    },
     "ui/public/brand/mark-dark.svg": {
       "sha256": "839b09d45b091ca2ab4c25512f985fee5a44fa24e46ab39c27e18ccc28acd101",
       "kind": "framework"
@@ -1704,6 +1760,10 @@
     },
     "ui/src/components/ItemMeta.tsx": {
       "sha256": "5dae0f027efd9a377968090d2571c34efdca5b1f54bb34901eb7754f483dd677",
+      "kind": "framework"
+    },
+    "ui/src/components/LatticeMark.tsx": {
+      "sha256": "c28e60587f2bb0004fed60a8825c466e32114825d6059a72d783261541388fbc",
       "kind": "framework"
     },
     "ui/src/components/ListingImage.tsx": {
@@ -1796,6 +1856,10 @@
     },
     "ui/src/components/entityref.css": {
       "sha256": "c107f25585246bd90d267d5d34cf596e1ba35253160aa30d4d9b863a6e6e1037",
+      "kind": "framework"
+    },
+    "ui/src/components/lattice.css": {
+      "sha256": "3a1030d7cbc4bddf7fdf02b9040a49ab941a588b4b0202a0e0d89e40b97f8d94",
       "kind": "framework"
     },
     "ui/src/components/shell.css": {
@@ -1895,7 +1959,7 @@
       "kind": "framework"
     },
     "ui/src/views/DatasetsView.tsx": {
-      "sha256": "f15874ae0b121cb88dc224fa830f1fd7298b15bcf510c52b8a21c307c725a6e1",
+      "sha256": "2dc996e8712fbde4f04a5a23e1ecb82edae9351ddc9d04a1c0a4e86a15e58e6e",
       "kind": "framework"
     },
     "ui/src/views/DefinitionDetailView.tsx": {
@@ -1903,7 +1967,7 @@
       "kind": "framework"
     },
     "ui/src/views/DefinitionsView.tsx": {
-      "sha256": "f6eb3a98c7b6449a5856bbb3425483996be709ff231016d8536f82d732e54623",
+      "sha256": "6821c03ae407a61ff2de23567e90348ac398b3956a407d3eb3dddaa1f5992cff",
       "kind": "framework"
     },
     "ui/src/views/ListingDetailView.tsx": {
@@ -1911,7 +1975,7 @@
       "kind": "framework"
     },
     "ui/src/views/ListingsView.tsx": {
-      "sha256": "58af75182758437abd0c10f512304ecd99715314bb9dcf4a281f3cc8d7a50b6b",
+      "sha256": "26a1637c77e0d3c0955f73a319f06a27d7f2d13268aba0a2111f91a5abce13f0",
       "kind": "framework"
     },
     "ui/src/views/ModelDetailView.tsx": {
@@ -1919,7 +1983,7 @@
       "kind": "framework"
     },
     "ui/src/views/ModelsView.tsx": {
-      "sha256": "2c324d8643ef042b937e7aa75117eaa99da4c5e9e25ba06380380575bf09e14b",
+      "sha256": "819fe6e89b9a4b7d9be92c53ec2288698727813d190745beb1f569402582ca2b",
       "kind": "framework"
     },
     "ui/src/views/NewDatasetView.tsx": {
@@ -1943,7 +2007,7 @@
       "kind": "framework"
     },
     "ui/src/views/RunsView.tsx": {
-      "sha256": "d4f3953ed01db3a45d990996be054664f0773628a907e92606bb8b8696ac3620",
+      "sha256": "f531424b676b06bc7610d8b45a23673d39fbae298b0a8729dae9ab6ee5bbde9e",
       "kind": "framework"
     },
     "ui/src/views/compare.css": {
