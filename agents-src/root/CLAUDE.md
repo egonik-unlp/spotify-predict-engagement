@@ -36,8 +36,9 @@ runs, promoted models and predictions behind a React UI.
   `best_models` table.
 - **`data/`** holds the binary artifacts (datasets, run dirs, model
   snapshots). NEVER write under `data/` by hand.
-- The Qdrant corpus (`{{collection}}` at `{{qdrant_url}}`) is external;
-  manual entries live in `{{manual_collection}}`.
+- The Qdrant corpus (`{{collection}}` at `{{qdrant_url}}`) is hosted by
+  this instance's own compose stack (`zig build db-up` starts it via the
+  `qdrant` profile); manual entries live in `{{manual_collection}}`.
 - **Refreshing / injecting newer corpus data** — the corpus-build pipeline is
   vendored in-repo under `pipeline/corpus/` (ingest → enrich → clean →
   sessionize → aggregates → embed → transitions → ids → upsert); the instance is
