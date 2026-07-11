@@ -5158,6 +5158,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a79a3332a6609480d7d0c9eab957bca6b455b91bb84e66d19f5ff66294b85b8"
 
 [[package]]
+name = "lensing-compression"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "burn",
+ "lensing-core",
+ "lensing-onnx",
+ "nalgebra",
+ "reqwest 0.13.4",
+ "serde",
+ "serde_json",
+ "toml 0.9.12+spec-1.1.0",
+]
+
+[[package]]
 name = "lensing-core"
 version = "0.1.0"
 dependencies = [
@@ -5195,6 +5210,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "lensing-interp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "lensing-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "lensing-onnx"
 version = "0.1.0"
 
@@ -5205,6 +5230,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "lensing-compression",
  "lensing-core",
  "nalgebra",
  "reqwest 0.13.4",
@@ -5271,7 +5297,23 @@ dependencies = [
  "burn",
  "clap",
  "lensing-core",
+ "lensing-interp",
  "lensing-onnx",
+ "lensing-sae",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lensing-sae"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "burn",
+ "clap",
+ "lensing-core",
+ "lensing-interp",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
 ]
@@ -5287,6 +5329,7 @@ dependencies = [
  "dotenvy",
  "flate2",
  "futures",
+ "lensing-compression",
  "lensing-core",
  "lensing-db",
  "lensing-pipeline",

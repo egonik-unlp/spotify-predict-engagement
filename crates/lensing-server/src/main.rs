@@ -3,9 +3,11 @@ mod best_models;
 mod corpus;
 mod definitions;
 mod infer;
+mod interp;
 mod models;
 mod pathfinder;
 mod registry;
+mod representations;
 mod runs;
 mod state;
 mod worker;
@@ -252,6 +254,13 @@ async fn main() -> Result<()> {
         cli.port, _pf_sidecar
     );
 
+    // Auto-queue a per-model SAE analysis whenever a model is promoted; opt out
+    // with LENSING_AUTO_MODEL_SAE=0 (or =false). PG_AUTO_MODEL_SAE is honored as
+    // the legacy fallback, matching the other env knobs above.
+    let auto_model_sae = env_or_legacy("LENSING_AUTO_MODEL_SAE", "PG_AUTO_MODEL_SAE")
+        .map(|v| v != "0" && !v.eq_ignore_ascii_case("false"))
+        .unwrap_or(true);
+
     let db_sink = db.clone().map(lensing_db::sink::DbSink::spawn);
     let state = Arc::new(AppState {
         root: root.clone(),
@@ -273,6 +282,7 @@ async fn main() -> Result<()> {
         build_slots: Arc::new(Semaphore::new(1)),
         best_models_lock: tokio::sync::Mutex::new(()),
         corpus_index: tokio::sync::Mutex::new(None),
+        auto_model_sae,
     });
 
     let ui_dist = root.join("ui/dist");
@@ -316,6 +326,12 @@ async fn main() -> Result<()> {
             "/collections/export",
             axum::routing::post(api::export_collection),
         )
+        .route(
+            "/representations",
+            get(representations::list_representations).post(representations::build_representation),
+        )
+        .route("/representations/{id}", get(representations::get_representation))
+        .route("/representations/{id}/encode", axum::routing::post(representations::encode_representation))
         .route("/runs", get(api::list_runs).post(api::start_run))
         .route("/runs/{id}", get(api::get_run).delete(api::delete_run))
         .route("/runs/{id}/predictions", get(api::get_predictions))
@@ -380,6 +396,20 @@ async fn main() -> Result<()> {
         .route(
             "/definitions/{name}/clone",
             axum::routing::post(api::clone_definition),
+        )
+        .route("/interp/models", get(interp::list_models))
+        .route("/interp/layer-probe", axum::routing::post(interp::start_layer_probe))
+        .route(
+            "/interp/layer-probe/compare",
+            axum::routing::post(interp::start_layer_probe_compare),
+        )
+        .route("/interp/embedding-probe", axum::routing::post(interp::start_embedding_probe))
+        .route("/interp/sae", axum::routing::post(interp::start_sae))
+        .route("/interp/model-sae", axum::routing::post(interp::start_model_sae))
+        .route("/interp/analyses", get(interp::list_analyses))
+        .route(
+            "/interp/analyses/{id}",
+            get(interp::get_analysis).delete(interp::delete_analysis),
         )
         // Playlist pathfinder: reverse-proxied to the Python sidecar.
         .route("/pathfinder/search", get(pathfinder::proxy_search))

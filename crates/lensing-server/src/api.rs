@@ -23,6 +23,13 @@ use crate::state::{AppState, BuildStatus, JobStatus};
 /// Anyhow-backed error → JSON 500/4xx.
 pub struct ApiError(StatusCode, String);
 
+impl ApiError {
+    /// The human-readable message (for logging off the HTTP path).
+    pub(crate) fn message(&self) -> &str {
+        &self.1
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         (self.0, Json(json!({ "error": self.1 }))).into_response()
@@ -35,11 +42,11 @@ impl From<anyhow::Error> for ApiError {
     }
 }
 
-fn not_found(what: &str) -> ApiError {
+pub(crate) fn not_found(what: &str) -> ApiError {
     ApiError(StatusCode::NOT_FOUND, format!("{what} not found"))
 }
 
-fn bad_request(msg: String) -> ApiError {
+pub(crate) fn bad_request(msg: String) -> ApiError {
     ApiError(StatusCode::BAD_REQUEST, msg)
 }
 
@@ -1536,6 +1543,8 @@ pub async fn promote_model(
         .map_err(|e| bad_request(format!("{e:#}")))?;
     // A manual promotion may belong in the best-models group.
     best_models::spawn_recompute(state.clone());
+    // A newly provided model gets a per-model SAE analysis queued (MLP families).
+    crate::interp::auto_queue_model_sae(state.clone(), record.name.clone());
     Ok((StatusCode::CREATED, Json(record)))
 }
 

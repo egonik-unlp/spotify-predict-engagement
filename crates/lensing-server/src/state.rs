@@ -52,6 +52,10 @@ pub struct AppState {
     /// predict flow (one unfiltered scroll of the corpus, cached). `None`
     /// until the first `/api/corpus/search`; a `refresh=true` query rebuilds.
     pub corpus_index: tokio::sync::Mutex<Option<std::sync::Arc<Vec<crate::corpus::CorpusEntry>>>>,
+    /// Auto-queue a per-model SAE analysis when a model is promoted (env
+    /// `LENSING_AUTO_MODEL_SAE`, default on). Applies to the MLP families that
+    /// declare `model_sae_args`; other predictors are silently skipped.
+    pub auto_model_sae: bool,
 }
 
 impl AppState {

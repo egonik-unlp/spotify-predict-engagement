@@ -89,6 +89,7 @@ pub async fn run(
         build_slots: Arc::new(Semaphore::new(1)),
         best_models_lock: tokio::sync::Mutex::new(()),
         corpus_index: tokio::sync::Mutex::new(None),
+        auto_model_sae: false, // read-only inference role never promotes
     });
 
     // Materialize the best-models group from the database so the predict
