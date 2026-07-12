@@ -72,6 +72,8 @@ cache, so steps are cheap to re-run. `zig build -l` prints this list.
 | `zig build check` | everything CI would run: `test` + `lint` + `py-check` |
 | `zig build julia-setup` | one-time `Pkg.instantiate()` for the flux-mlp + flux-cnn predictors |
 | `zig build py-setup` | one-time `predictors/.venv` with ridge + torch-cnn deps (CPU torch) |
+| `zig build export-instance` | capture this instance (Postgres + Qdrant + `data/`) into `./instance-bundle` (`-- --tarball` for a single `.tar`) |
+| `zig build restore-instance` | restore a bundle on a fresh machine (pass the bundle dir/tarball after `--`) |
 
 Options (apply to `serve` / `dataset`):
 
@@ -82,6 +84,59 @@ zig build serve -Dport=9000 -Dqdrant-url=http://qdrant:6333 -Dcollection=my-corp
 For non-default dataset flags (PCA dims, quality filters, …) call
 `target/release/lensing-pipeline build --help` directly; the `dataset` step only
 covers the default build.
+
+## Moving this instance to another machine
+
+This repo is **not self-contained**. Cloning it gives you the code but none of
+the state the app needs to run:
+
+| store | what it holds | where it lives |
+|---|---|---|
+| **Postgres** (`:5436`) | model defs, runs + metrics, promotions, dataset index | docker volume `pgdata` |
+| **Qdrant** (`:6335`) | the corpus (`spotify_tracks` + the `_content`/`_song_ae` AE chain + cleaned variants) and `manual-tracks` | docker volume `qdrant_storage` |
+| **`data/`** | dataset matrices + promoted-model snapshots + `best-models.json` | gitignored, **not in the repo** |
+
+On a fresh checkout the server comes up empty (no models, no corpus). `zig build
+serve` prints a loud preflight warning whenever `data/` has no artifacts, so the
+harness always tells you when a restore is still pending.
+
+**On the machine that already works** — capture a bundle (needs the DB + Qdrant
+up: `zig build db-up`):
+
+```sh
+zig build export-instance            # → ./instance-bundle/ (pg dump + qdrant snapshots + data/ essentials)
+# host it on R2 (one-time bucket: wrangler r2 bucket create spotify-engagement-dumps)
+for f in instance-bundle/*; do wrangler r2 object put "spotify-engagement-dumps/$(basename "$f")" --file "$f"; done
+```
+
+Prefer a **single file** (e.g. Google Drive, no S3 tooling)? Add `--tarball`:
+
+```sh
+zig build export-instance -- --tarball   # → ./instance-bundle.tar (one upload)
+```
+
+The files inside are already compressed, so the wrapper is a plain `.tar` (no
+wasteful double-compression); `restore-instance` unpacks a `.tar` / `.tar.zst` /
+`.tar.gz` automatically. `data/runs/` (finished-run artifact dirs) is excluded by
+default — set `BUNDLE_RUNS=1` to include it.
+
+**On the new machine** — clone, then restore before anything else:
+
+```sh
+git clone <repo> && cd spotify-predict-engagement
+# a dir of files, a single tarball, or an HTTP base:
+zig build restore-instance -- ./instance-bundle          # R2: dir of files
+zig build restore-instance -- ./instance-bundle.tar      # Google Drive: single tarball
+# DUMP_BASE_URL=https://<r2-base>/ scripts/restore-instance.sh   # stream from HTTP
+zig build pathfinder-setup                               # one-time sidecar venv
+zig build serve -Dqdrant-url=http://localhost:6335       # corpus now lives in the local Qdrant
+```
+
+`restore-instance` verifies checksums and refuses to clobber a populated
+instance or run underneath a lensing-server with live training runs (override
+with `FORCE=1`). Set `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` in `.env` only
+if you want the Pathfinder "Export to Spotify" button. The scripts and hosting
+choice are documented in `scripts/export-instance.sh` / `scripts/restore-instance.sh`.
 
 ## Dataset artifact format
 

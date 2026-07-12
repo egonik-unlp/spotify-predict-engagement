@@ -21,8 +21,10 @@
 //!
 //! Step graph (A → B means A runs B first):
 //!   (default)     → backend, ui
-//!   serve         → backend, ui, db-up, then runs target/release/lensing-server
+//!   serve         → backend, ui, db-up, preflight, then runs target/release/lensing-server
 //!   dataset       → backend, then runs target/release/lensing-pipeline build
+//!   export-instance  → scripts/export-instance.sh (bundle Postgres+Qdrant+data/)
+//!   restore-instance → scripts/restore-instance.sh -- <bundle dir>  (fresh machine)
 //!   db-up         → docker compose --profile qdrant up -d postgres qdrant --wait
 //!   db-down       → docker compose down (the pgdata volume survives)
 //!   migrate-data  → backend, db-up, then lensing-server migrate-data (idempotent
@@ -130,8 +132,37 @@ pub fn build(b: *std.Build) void {
     run_server.step.dependOn(ui);
     run_server.step.dependOn(db_up);
 
+    // Non-fatal fresh-machine check: data/ artifacts are gitignored, so a new
+    // checkout must restore the Postgres + Qdrant + data/ bundle first. The
+    // preflight only warns and points at restore-instance.sh.
+    const preflight = b.addSystemCommand(&.{"scripts/preflight-instance.sh"});
+    preflight.setCwd(b.path("."));
+    preflight.stdio = .inherit;
+    preflight.has_side_effects = true;
+    run_server.step.dependOn(&preflight.step);
+
     const serve = b.step("serve", "Build backend + UI, start the database, then run lensing-server (http://localhost:<port>)");
     serve.dependOn(&run_server.step);
+
+    // ---------------- export-instance / restore-instance: portable bundle ----------------
+    // Move a whole instance between machines: pg_dump + Qdrant snapshots +
+    // data/ essentials. See scripts/ and the README "Moving this instance to
+    // another machine" section.
+    const run_export = b.addSystemCommand(&.{"scripts/export-instance.sh"});
+    if (b.args) |a| run_export.addArgs(a); // forwards e.g. `-- --tarball` for a single-file bundle
+    run_export.setCwd(b.path("."));
+    run_export.stdio = .inherit;
+    run_export.has_side_effects = true;
+    const export_instance = b.step("export-instance", "Capture this instance (Postgres + Qdrant + data/) into ./instance-bundle (-- --tarball for a single .tar)");
+    export_instance.dependOn(&run_export.step);
+
+    const run_restore = b.addSystemCommand(&.{"scripts/restore-instance.sh"});
+    if (b.args) |a| run_restore.addArgs(a); // forwards e.g. `-- /path/to/instance-bundle`
+    run_restore.setCwd(b.path("."));
+    run_restore.stdio = .inherit;
+    run_restore.has_side_effects = true;
+    const restore_instance = b.step("restore-instance", "Restore an instance bundle on a fresh machine (pass the bundle dir after --)");
+    restore_instance.dependOn(&run_restore.step);
 
     // ---------------- worker / infer: distributed roles (docs/DEPLOY.md) ----------------
     const hub_url = b.option(
