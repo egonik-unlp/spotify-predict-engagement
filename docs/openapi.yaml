@@ -32,6 +32,9 @@ tags:
   - name: best-models
   - name: listings
   - name: definitions
+  - name: corpus
+  - name: representations
+  - name: interpretability
 
 paths:
   /openapi.yaml:
@@ -1214,6 +1217,321 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /representations:
+    get:
+      tags: [representations]
+      summary: List latent representations
+      description: >-
+        All built latent representations (compressors that map a source
+        collection's vectors into a lower-dimensional latent collection),
+        newest first.
+      responses:
+        '200':
+          description: Representation metadata.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  representations:
+                    type: array
+                    items: { $ref: '#/components/schemas/RepresentationMeta' }
+    post:
+      tags: [representations]
+      summary: Build a latent representation
+      description: >-
+        Start an async build of a latent representation — fit a compressor
+        (PCA, dense autoencoder, or sparse autoencoder) over a source
+        collection and write the encoded vectors to a sink (latent) collection.
+        Returns a build_id; poll GET /builds/{id}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BuildRepresentationRequest' }
+      responses:
+        '200':
+          description: Build accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  build_id: { type: string }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /representations/{id}:
+    get:
+      tags: [representations]
+      summary: Get a representation
+      description: Metadata for one latent representation by id.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Representation metadata.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RepresentationMeta' }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /representations/{id}/encode:
+    post:
+      tags: [representations]
+      summary: Encode a vector through a representation
+      description: >-
+        Encode a single raw source-space vector into the representation's
+        latent space using its trained compressor.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vector]
+              properties:
+                vector:
+                  type: array
+                  items: { type: number }
+                  description: >-
+                    Raw source-space vector (length = the representation's
+                    input dim).
+      responses:
+        '200':
+          description: Latent vector.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  latent:
+                    type: array
+                    items: { type: number }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /interp/models:
+    get:
+      tags: [interpretability]
+      summary: List probeable models
+      description: >-
+        Promoted models the interpretability probes can analyze: those whose
+        predictor family declares probe support (the native burn nets). Each
+        carries its predictor, training dataset, n_cols and hyperparams.
+      responses:
+        '200':
+          description: Probeable models.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+
+  /interp/layer-probe:
+    post:
+      tags: [interpretability]
+      summary: Layer probe (single model)
+      description: >-
+        Fit ridge probes on each hidden layer's activations to measure how much
+        target-relevant signal is linearly decodable by depth. Returns a
+        job_id; poll GET /jobs/{id}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LayerProbeRequest' }
+      responses:
+        '200':
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /interp/layer-probe/compare:
+    post:
+      tags: [interpretability]
+      summary: Layer probe (compare models)
+      description: >-
+        Overlay layer probes across two or more models on a shared dataset so
+        the decodability curves are comparable. Returns a job_id; poll
+        GET /jobs/{id}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [models]
+              properties:
+                models:
+                  type: array
+                  items: { type: string }
+                  description: Two or more model directory names to probe and overlay.
+                dataset:
+                  type: string
+                  description: Shared dataset id; defaults to the first model's training dataset.
+                lambda:
+                  type: number
+                  description: Ridge penalty; 0/absent picks by internal CV.
+      responses:
+        '200':
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /interp/embedding-probe:
+    post:
+      tags: [interpretability]
+      summary: Embedding probe
+      description: >-
+        On a dataset (no model), fit linear + MLP probes on the raw embeddings
+        sliced into segments by a categorical group, against a per-segment
+        median floor, to decide whether the hardest segment's error is
+        information-absent or merely unused. Returns a job_id; poll
+        GET /jobs/{id}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmbeddingProbeRequest' }
+      responses:
+        '200':
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /interp/sae:
+    post:
+      tags: [interpretability]
+      summary: Dataset sparse autoencoder
+      description: >-
+        Train a sparse autoencoder over a dataset's embedding (PCA) block to
+        surface an overcomplete dictionary of interpretable atoms, with an
+        optional per-segment code probe. Returns a job_id; poll GET /jobs/{id}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaeRequest' }
+      responses:
+        '200':
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /interp/model-sae:
+    post:
+      tags: [interpretability]
+      summary: Per-model sparse autoencoder
+      description: >-
+        Train a sparse autoencoder on a promoted model's own hidden activations
+        (per layer) and report capacity, per-segment representation,
+        concept-vs-decodability by depth, and — with compare_embedding — the
+        target-relevant signal the model drops relative to the embedding.
+        Returns a job_id; poll GET /jobs/{id}.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModelSaeRequest' }
+      responses:
+        '200':
+          description: Job accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /interp/analyses:
+    get:
+      tags: [interpretability]
+      summary: List persisted interpretability analyses
+      description: >-
+        Persisted analyses (metadata only, newest first), optionally filtered
+        by tool / model / dataset.
+      parameters:
+        - { name: tool, in: query, required: false, schema: { type: string } }
+        - { name: model, in: query, required: false, schema: { type: string } }
+        - { name: dataset, in: query, required: false, schema: { type: string } }
+      responses:
+        '200':
+          description: Analyses (metadata).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analyses:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+
+  /interp/analyses/{id}:
+    get:
+      tags: [interpretability]
+      summary: Get a persisted analysis
+      description: The full stored analysis JSON by id.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Analysis JSON.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [interpretability]
+      summary: Delete a persisted analysis
+      description: Remove a stored analysis by id.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   parameters:
     DatasetId:
@@ -1269,6 +1587,85 @@ components:
       type: object
       properties:
         error: { type: string }
+    CompressionMethod:
+      type: string
+      enum: [pca, ae, sparse_ae]
+      description: >-
+        Compressor family for a latent representation — PCA, dense autoencoder,
+        or sparse autoencoder.
+    RepresentationMeta:
+      type: object
+      description: Metadata for one built latent representation.
+      properties:
+        id: { type: string }
+        name: { type: string }
+        method: { $ref: '#/components/schemas/CompressionMethod' }
+        latent_dim: { type: integer }
+        source_collection: { type: string }
+        sink_collection: { type: string }
+        created_at: { type: string }
+        n_points: { type: integer }
+        quality:
+          type: object
+          additionalProperties: true
+          description: EVR curve (PCA) or per-block reconstruction R² (autoencoder).
+    BuildRepresentationRequest:
+      type: object
+      required: [name, method, latent, sink_collection]
+      properties:
+        name: { type: string }
+        method: { $ref: '#/components/schemas/CompressionMethod' }
+        latent: { type: integer, description: Latent dimensionality. }
+        sink_collection: { type: string, description: Destination (latent) collection name. }
+        source_collection: { type: string, description: Source collection; defaults to the corpus. }
+        epochs: { type: integer, description: Autoencoder training epochs (AE methods). }
+        hidden:
+          type: array
+          items: { type: integer }
+          description: Autoencoder hidden layer widths (AE methods).
+        sparse_weight: { type: number, description: L1 sparsity weight (sparse_ae only). }
+        distance: { type: string, default: Cosine, description: Distance metric for the sink collection. }
+    LayerProbeRequest:
+      type: object
+      required: [model]
+      properties:
+        model: { type: string, description: Model directory name under data/models/. }
+        dataset: { type: string, description: Dataset id to probe on; defaults to the model's training dataset. }
+        lambda: { type: number, description: Ridge penalty; 0/absent picks by internal CV. }
+    EmbeddingProbeRequest:
+      type: object
+      required: [dataset]
+      properties:
+        dataset: { type: string, description: Dataset id whose embedding (PCA) block is probed. }
+        split_by:
+          type: string
+          description: >-
+            One-hot categorical group to slice rows by; defaults to the
+            domain's [interp].segment_field.
+        no_mlp: { type: boolean, description: Skip the slower nonlinear MLP ceiling probe. }
+    SaeRequest:
+      type: object
+      required: [dataset]
+      properties:
+        dataset: { type: string, description: Dataset id whose embedding (PCA) block the SAE trains on. }
+        max_dims: { type: integer }
+        n_atoms: { type: integer, description: Dictionary atom count (default 2048). }
+        l1: { type: number, description: L1 sparsity penalty. }
+        epochs: { type: integer }
+        segment: { type: string, description: Categorical value to slice for the segment probe; empty ⇒ pooled only. }
+        label_atoms: { type: boolean, description: Label top atoms with an LLM (needs OPENAI_API_KEY on the server). }
+    ModelSaeRequest:
+      type: object
+      required: [model]
+      properties:
+        model: { type: string, description: MLP-family model directory name under data/models/. }
+        dataset: { type: string, description: Dataset id to analyze on; defaults to the model's training dataset. }
+        layers: { type: string, description: Comma-separated 1-based hidden layers to analyze; empty ⇒ all. }
+        n_atoms: { type: integer, description: SAE atom count; 0/absent ⇒ 2× the layer width. }
+        l1: { type: number }
+        epochs: { type: integer }
+        label_atoms: { type: boolean, description: Label surfaced atoms with an LLM (needs OPENAI_API_KEY). }
+        compare_embedding: { type: boolean, description: Also diff against a dataset SAE to report dropped embedding concepts. }
       required: [error]
 
     Ok:
@@ -1586,7 +1983,7 @@ components:
       type: object
       description: One corpus track as surfaced by /corpus/search.
       properties:
-        point_id: { type: integer, format: int64, description: Predict this by point_ids:[point_id]. }
+        point_id: { type: integer, format: int64, description: 'Predict this by point_ids:[point_id].' }
         content: { type: string }
         display:
           type: object
