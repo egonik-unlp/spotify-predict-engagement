@@ -10,6 +10,7 @@ import './styles/tokens.css'
 import './styles/base.css'
 
 import { DomainProvider } from './lib/DomainContext'
+import { CompareProvider } from './lib/CompareContext'
 import Shell from './components/Shell'
 import RunsView from './views/RunsView'
 import NewRunView from './views/NewRunView'
@@ -25,9 +26,13 @@ import DatasetDetailView from './views/DatasetDetailView'
 import NewDatasetView from './views/NewDatasetView'
 import PredictView from './views/PredictView'
 import PathfinderView from './views/PathfinderView'
+import RepresentationsView from './views/RepresentationsView'
+import RepresentationDetailView from './views/RepresentationDetailView'
+import NewRepresentationView from './views/NewRepresentationView'
 import ListingsView from './views/ListingsView'
 import NewListingView from './views/NewListingView'
 import ListingDetailView from './views/ListingDetailView'
+import InterpretabilityView from './views/InterpretabilityView'
 
 const router = createBrowserRouter([
   {
@@ -39,6 +44,9 @@ const router = createBrowserRouter([
       { path: 'runs/:runId', element: <RunDetailView /> },
       { path: 'compare', element: <CompareView /> },
       { path: 'predictors/:name', element: <PredictorDetailView /> },
+      { path: 'representations', element: <RepresentationsView /> },
+      { path: 'representations/new', element: <NewRepresentationView /> },
+      { path: 'representations/:id', element: <RepresentationDetailView /> },
       { path: 'datasets', element: <DatasetsView /> },
       { path: 'datasets/new', element: <NewDatasetView /> },
       { path: 'datasets/:id', element: <DatasetDetailView /> },
@@ -52,6 +60,7 @@ const router = createBrowserRouter([
       { path: 'listings/new', element: <NewListingView /> },
       { path: 'listings/:id', element: <ListingDetailView /> },
       { path: 'listings/:id/edit', element: <NewListingView /> },
+      { path: 'interpretability', element: <InterpretabilityView /> },
     ],
   },
 ])
@@ -59,7 +68,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <DomainProvider>
-      <RouterProvider router={router} />
+      <CompareProvider>
+        <RouterProvider router={router} />
+      </CompareProvider>
     </DomainProvider>
   </StrictMode>,
 )
