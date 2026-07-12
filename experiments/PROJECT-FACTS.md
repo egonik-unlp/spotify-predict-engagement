@@ -506,6 +506,33 @@ Generic priors (replace with measured facts as campaigns land):
     test.
 - **DATASET BUILD MEMORY CEILING: a full-uncapped identity one-hot matrix (~6,600+ dense cols) FAILS to build on this host (MEASURED 2026-06-15, `2026-06-15-vocab-cap-scan-gbdt.md`).** The vocab-cap scan's top-of-curve point — artist 5594 / genre 962 (full uncapped vocab → ~6,633 cols) on the 23,529-row rotation corpus — failed to materialize on TWO `POST /api/datasets` attempts: each returned a build_id but the dataset never registered, no build-run dir survived, and the build python died mid-materialization. Root cause is host memory, not the recipe: a 23,529 × 6,633 float32 DENSE matrix is ~0.62 GB, but PCA + one-hot intermediates plus the train/test copies push the PEAK well over the ~2.3 GB free (of 15 GB total) available under concurrent training load. The build path is DENSE (`features.f32`) — there is no sparse one-hot option — so col count × rows is a hard wall. Practical guidance: cap artist one-hots at ≤1000 / genre ≤300 (1377 cols builds fine) under normal load; build very-wide matrices only on a quiescent host, and if a build_id returns but no dataset appears within ~10 min and no build process is alive, treat it as an OOM failure, not a slow build. Building cheap→expensive (P1→P2→P3) isolates the failure to the widest point and protects the interior of any cardinality scan.
 
+## Interpretability config — `[interp] segment_field` is UNDETERMINED (2026-07-12)
+
+The SAE / interpretability capability synced from lensing `7dc5860` (the
+`information-capture-analyst` agent + `information-capture` skill, backed by
+`POST /api/interp/model-sae`) segments its per-segment representation analysis
+by a `[interp] segment_field` key in `domain.toml`. **That key is deliberately
+NOT set yet** — `domain.toml` has no `[interp]` section, so the server falls
+back to the first `categorical`-role field automatically. This is intentional,
+not an oversight.
+
+- **DIRECTIVE for agents:** treat `[interp] segment_field` as *to be
+  determined*. Do not silently assume the fallback field is the right one, and
+  do not invent a value. When an interpretability run needs a segment axis,
+  surface that the field is undetermined and apply the criterion below (or ask).
+- **CRITERION for choosing it:** the segment field should be **the field that
+  drives errors the most** — i.e. the categorical axis along which the model's
+  error concentrates / that best explains residual variance, not just any
+  categorical field. Determine it empirically (e.g. per-segment error breakdown
+  on a promoted model) before writing it into `domain.toml`.
+- Given the on-record CONVERGENT FINDING that taste-fit here is driven by
+  artist/genre **identity** one-hots, an identity field (artist or
+  genre_primary) is the leading a-priori candidate — but this must be
+  *confirmed* against the drives-errors-most criterion, not assumed.
+- To set it once determined: add to `domain.toml`
+  `\n[interp]\nsegment_field = "<field>"` (optional key, `schema_version`
+  stays 1). Until then the automatic first-categorical fallback stands.
+
 ## Taste-fit reframe for Pathfinder (2026-06-08)
 
 The model's ultimate consumer is the **Pathfinder** A* search, where it supplies
